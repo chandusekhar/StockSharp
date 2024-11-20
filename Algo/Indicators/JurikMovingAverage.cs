@@ -1,156 +1,95 @@
-#region S# License
-/******************************************************************************************
-NOTICE!!!  This program and source code is owned and licensed by
-StockSharp, LLC, www.stocksharp.com
-Viewing or use of this code requires your acceptance of the license
-agreement found at https://github.com/StockSharp/StockSharp/blob/master/LICENSE
-Removal of this comment is a violation of the license agreement.
+﻿namespace StockSharp.Algo.Indicators;
 
-Project: StockSharp.Algo.Indicators.Algo
-File: JurikMovingAverage.cs
-Created: 2015, 11, 11, 2:32 PM
-
-Copyright 2010 by StockSharp, LLC
-*******************************************************************************************/
-#endregion S# License
-namespace StockSharp.Algo.Indicators
+/// <summary>
+/// Jurik Moving Average.
+/// </summary>
+/// <remarks>
+/// https://doc.stocksharp.com/topics/api/indicators/list_of_indicators/jma.html
+/// </remarks>
+[Display(
+	ResourceType = typeof(LocalizedStrings),
+	Name = LocalizedStrings.JMAKey,
+	Description = LocalizedStrings.JurikMovingAverageKey)]
+[Doc("topics/api/indicators/list_of_indicators/jma.html")]
+public class JurikMovingAverage : LengthIndicator<decimal>
 {
-	using System;
-	using System.ComponentModel;
-
-	using Ecng.Serialization;
-
-	using StockSharp.Localization;
-
-	/// <summary>
-	/// Jurik Moving Average.
-	/// </summary>
-	[DisplayName("JMA")]
-	[DescriptionLoc(LocalizedStrings.Str789Key)]
-	public class JurikMovingAverage : LengthIndicator<decimal>
+	private class CalcBuffer
 	{
-		///// <summary>
-		///// Текущее направление тренда
-		///// </summary>
-		//private int _lastDirection;
+		private int _jj;
+		private int _ii;
 
-		int _jj;
-		int _ii;
+		private double _series;
 
-		double _series;
+		private double _vv;
+		private double _v1;
+		private double _v2;
+		private double _v3;
+		private double _v4;
 
-		double _vv;
-		double _v1;
-		double _v2;
-		double _v3;
-		double _v4;
+		private double _s8;
+		private double _s10;
+		private double _s18;
+		private double _s20;
 
-		double _s8;
-		double _s10;
-		double _s18;
-		double _s20;
+		private int _v5;
+		private int _v6;
 
-		int _v5;
-		int _v6;
+		private double _s28;
+		private double _s30;
 
-		double _s28;
-		double _s30;
+		private int _s38;
+		private int _s40;
+		private int _s48;
+		private int _s50;
+		private int _s58;
+		private int _s60;
 
-		int _s38;
-		int _s40;
-		int _s48;
-		int _s50;
-		int _s58;
-		int _s60;
+		private double _s68;
+		private double _s70;
 
-		double _s68;
-		double _s70;
+		private double _f8;
+		private double _f10;
+		private double _f18;
+		private double _f20;
+		private double _f28;
+		private double _f30;
+		private double _f38;
+		private double _f40;
+		private double _f48;
+		private double _f50;
+		private double _f58;
+		private double _f60;
+		private double _f68;
+		private double _f70;
+		private double _f78;
+		private double _f80;
+		private double _f88;
+		private double _f90;
+		private double _f98;
+		private double _fA0;
+		private double _fA8;
+		private double _fB0;
+		private double _fB8;
+		private double _fC0;
+		private double _fC8;
+		private double _fD0;
+		private int _f0;
+		private int _fD8;
+		private int _fE0;
+		private int _fE8;
 
-		double _f8;
-		double _f10;
-		double _f18;
-		double _f20;
-		double _f28;
-		double _f30;
-		double _f38;
-		double _f40;
-		double _f48;
-		double _f50;
-		double _f58;
-		double _f60;
-		double _f68;
-		double _f70;
-		double _f78;
-		double _f80;
-		double _f88;
-		double _f90;
-		double _f98;
-		double _fA0;
-		double _fA8;
-		double _fB0;
-		double _fB8;
-		double _fC0;
-		double _fC8;
-		double _fD0;
-		int _f0;
-		int _fD8;
-		int _fE0;
-		int _fE8;
+		private int _fF0;
 
-		int _fF0;
+		private int _fF8;
 
-		int _fF8;
+		private int _value2;
 
-		int _value2;
+		private double[] _list = new double[128];
+		private double[] _ring1 = new double[128];
+		private double[] _ring2 = new double[11];
+		private double[] _buffer = new double[62];
 
-		double[] _list = new double[128];
-		double[] _ring1 = new double[128];
-		double[] _ring2 = new double[11];
-		double[] _buffer = new double[62];
-
-		#region Свойства
-
-		private int _phase;
-
-		/// <summary>
-		/// Phase.
-		/// </summary>
-		[DisplayNameLoc(LocalizedStrings.Str790Key)]
-		[DescriptionLoc(LocalizedStrings.Str791Key)]
-		[CategoryLoc(LocalizedStrings.GeneralKey)]
-		public int Phase
-		{
-			get
-			{
-				return _phase;
-			}
-			set
-			{
-				_phase = value;
-
-				if (_phase > 100)
-					_phase = 100;
-				else if (_phase < -100)
-					_phase = -100;
-
-				Reset();
-			}
-		}
-
-		#endregion
-
-		/// <summary>
-		/// Initializes a new instance of the <see cref="JurikMovingAverage"/>.
-		/// </summary>
-		public JurikMovingAverage()
-		{
-			Initialize();
-		}
-
-		/// <summary>
-		/// Variables initial initialization.
-		/// </summary>
-		public void Initialize()
+		public void Init()
 		{
 			_jj = 0;
 			_ii = 0;
@@ -221,15 +160,10 @@ namespace StockSharp.Algo.Indicators
 
 			_value2 = 0;
 
-			_list = new double[128];
-			_ring1 = new double[128];
-			_ring2 = new double[11];
-			_buffer = new double[62];
-
 			_s28 = 63;
 			_s30 = 64;
 
-			for (var i = 1; i <= (int)_s28; i++) 
+			for (var i = 1; i <= (int)_s28; i++)
 				_list[i] = -1000000;
 
 			for (var i = (int)_s30; i <= 127; i++)
@@ -238,16 +172,28 @@ namespace StockSharp.Algo.Indicators
 			_f0 = 1;
 		}
 
-		/// <summary>
-		/// To handle the input value.
-		/// </summary>
-		/// <param name="input">The input value.</param>
-		/// <returns>The resulting value.</returns>
-		protected override IIndicatorValue OnProcess(IIndicatorValue input)
+		public CalcBuffer Clone()
 		{
-			var originalLastValue = this.GetCurrentValue();
+			var o = (CalcBuffer)MemberwiseClone();
+
+			o._list = new double[_list.Length];
+			o._ring1 = new double[_ring1.Length];
+			o._ring2 = new double[_ring2.Length];
+			o._buffer = new double[_buffer.Length];
+
+			Array.Copy(_list,    o._list,   _list.Length);
+			Array.Copy(_ring1,   o._ring1,  _ring1.Length);
+			Array.Copy(_ring2,   o._ring2,  _ring2.Length);
+			Array.Copy(_buffer,  o._buffer, _buffer.Length);
+
+			return o;
+		}
+
+		public (decimal lastValue, decimal newValue) Calculate(JurikMovingAverage ind, IIndicatorValue input)
+		{
+			var originalLastValue = ind.GetCurrentValue();
 			var lastValue = originalLastValue;
-			var newValue = input.GetValue<decimal>();
+			var newValue = input.ToDecimal();
 
 			#region Расчет JMA
 
@@ -262,28 +208,28 @@ namespace StockSharp.Algo.Indicators
 			//{ main cycle }
 			if (_fF0 > 30)
 			{
-				if (Length < 1.0000000002)
+				if (ind.Length < 1.0000000002)
 				{
 					_f80 = 0.0000000001; //{1.0e-10}
 				}
 				else
 				{
-					_f80 = (Length - 1) / 2.0;
+					_f80 = (ind.Length - 1) / 2.0;
 				}
 
-				if (_phase < -100)
+				if (ind.Phase < -100)
 				{
 					_f10 = 0.5;
 				}
 				else
 				{
-					if (_phase > 100)
+					if (ind.Phase > 100)
 					{
 						_f10 = 2.5;
 					}
 					else
 					{
-						_f10 = (double)_phase / 100 + 1.5;
+						_f10 = (double)ind.Phase / 100 + 1.5;
 					}
 				}
 
@@ -669,54 +615,95 @@ namespace StockSharp.Algo.Indicators
 
 			#endregion
 
-			//// Добавляем направление тренда
-			//_lastDirection = 0;
-
-			//// Сравниваем новое получившееся значение индикатора со старым
-			//if (lastValue > originalLastValue)
-			//	_lastDirection = 1;
-			//else if (lastValue < originalLastValue)
-			//	_lastDirection = -1;
-
-			// если буффер стал достаточно большим (стал больше длины)
-			if (IsFormed)
-			{
-				// удаляем хвостовое значение
-				Buffer.RemoveAt(0);
-			}
-
-			Buffer.Add(newValue);
-
-			return new DecimalIndicatorValue(this, lastValue);
+			return (lastValue, newValue);
 		}
+	}
 
-		/// <summary>
-		/// To reset the indicator status to initial. The method is called each time when initial settings are changed (for example, the length of period).
-		/// </summary>
-		public override void Reset()
+	private readonly CalcBuffer _buf = new();
+
+	#region Свойства
+
+	private int _phase;
+
+	/// <summary>
+	/// Phase.
+	/// </summary>
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.PhaseKey,
+		Description = LocalizedStrings.MaPhaseKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public int Phase
+	{
+		get => _phase;
+		set
 		{
-			Initialize();
-			base.Reset();
+			_phase = value;
+
+			if (_phase > 100)
+				_phase = 100;
+			else if (_phase < -100)
+				_phase = -100;
+
+			Reset();
+		}
+	}
+
+	#endregion
+
+	/// <summary>
+	/// Initializes a new instance of the <see cref="JurikMovingAverage"/>.
+	/// </summary>
+	public JurikMovingAverage()
+	{
+		Length = 20;
+		Initialize();
+	}
+
+	/// <summary>
+	/// Variables initial initialization.
+	/// </summary>
+	public void Initialize()
+	{
+		_buf.Init();
+	}
+
+	/// <inheritdoc />
+	protected override IIndicatorValue OnProcess(IIndicatorValue input)
+	{
+		var b = input.IsFinal ? _buf : _buf.Clone();
+
+		var (lastValue, newValue) = b.Calculate(this, input);
+
+		if (input.IsFinal)
+		{
+			if(IsFormed)
+				Buffer.PopFront();
+
+			Buffer.PushBack(newValue);
 		}
 
-		/// <summary>
-		/// Load settings.
-		/// </summary>
-		/// <param name="settings">Settings storage.</param>
-		public override void Load(SettingsStorage settings)
-		{
-			base.Load(settings);
-			Phase = settings.GetValue<int>(nameof(Phase));
-		}
+		return new DecimalIndicatorValue(this, lastValue, input.Time);
+	}
 
-		/// <summary>
-		/// Save settings.
-		/// </summary>
-		/// <param name="settings">Settings storage.</param>
-		public override void Save(SettingsStorage settings)
-		{
-			base.Save(settings);
-			settings.SetValue(nameof(Phase), Phase);
-		}
+	/// <inheritdoc />
+	public override void Reset()
+	{
+		Initialize();
+		base.Reset();
+	}
+
+	/// <inheritdoc />
+	public override void Load(SettingsStorage storage)
+	{
+		base.Load(storage);
+		Phase = storage.GetValue<int>(nameof(Phase));
+	}
+
+	/// <inheritdoc />
+	public override void Save(SettingsStorage storage)
+	{
+		base.Save(storage);
+		storage.SetValue(nameof(Phase), Phase);
 	}
 }

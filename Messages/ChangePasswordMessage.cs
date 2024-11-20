@@ -1,75 +1,93 @@
-#region S# License
-/******************************************************************************************
-NOTICE!!!  This program and source code is owned and licensed by
-StockSharp, LLC, www.stocksharp.com
-Viewing or use of this code requires your acceptance of the license
-agreement found at https://github.com/StockSharp/StockSharp/blob/master/LICENSE
-Removal of this comment is a violation of the license agreement.
+namespace StockSharp.Messages;
 
-Project: StockSharp.Messages.Messages
-File: ChangePasswordMessage.cs
-Created: 2015, 11, 11, 2:32 PM
+using System.Security;
 
-Copyright 2010 by StockSharp, LLC
-*******************************************************************************************/
-#endregion S# License
-namespace StockSharp.Messages
+/// <summary>
+/// Change password message.
+/// </summary>
+[DataContract]
+[Serializable]
+public class ChangePasswordMessage :
+	BaseResultMessage<ChangePasswordMessage>, ITransactionIdMessage, IErrorMessage
 {
-	using System;
-	using System.Runtime.Serialization;
-	using System.Security;
+	/// <summary>
+	/// Initialize <see cref="ChangePasswordMessage"/>.
+	/// </summary>
+	/// <param name="type">Message type.</param>
+	protected ChangePasswordMessage(MessageTypes type)
+		: base(type)
+	{
+	}
 
 	/// <summary>
-	/// Change password message.
+	/// Initializes a new instance of the <see cref="ChangePasswordMessage"/>.
 	/// </summary>
-	[DataContract]
-	[Serializable]
-	public class ChangePasswordMessage : Message
+	public ChangePasswordMessage()
+		: this(MessageTypes.ChangePassword)
 	{
-		/// <summary>
-		/// Initializes a new instance of the <see cref="ChangePasswordMessage"/>.
-		/// </summary>
-		public ChangePasswordMessage()
-			: base(MessageTypes.ChangePassword)
-		{
-		}
+	}
 
-		/// <summary>
-		/// Request identifier.
-		/// </summary>
-		[DataMember]
-		public long TransactionId { get; set; }
+	/// <inheritdoc />
+	[DataMember]
+	public long TransactionId { get; set; }
 
-		/// <summary>
-		/// ID of the original message <see cref="ChangePasswordMessage.TransactionId"/> for which this message is a response.
-		/// </summary>
-		[DataMember]
-		public long OriginalTransactionId { get; set; }
+	/// <inheritdoc />
+	[DataMember]
+	[XmlIgnore]
+	public Exception Error { get; set; }
 
-		/// <summary>
-		/// New password.
-		/// </summary>
-		[DataMember]
-		public SecureString NewPassword { get; set; }
+	[field: NonSerialized]
+	private SecureString _newPassword;
 
-		/// <summary>
-		/// Change password error info.
-		/// </summary>
-		[DataMember]
-		public Exception Error { get; set; }
+	/// <summary>
+	/// New password.
+	/// </summary>
+	[DataMember]
+	public SecureString NewPassword
+	{
+		get => _newPassword;
+		set => _newPassword = value;
+	}
 
-		/// <summary>
-		/// Create a copy of <see cref="ChangePasswordMessage"/>.
-		/// </summary>
-		/// <returns>Copy.</returns>
-		public override Message Clone()
-		{
-			return new ChangePasswordMessage
-			{
-				LocalTime = LocalTime,
-				NewPassword = NewPassword,
-				Error = Error,
-			};
-		}
+	/// <summary>
+	/// User name.
+	/// </summary>
+	[DataMember]
+	public string UserName { get; set; }
+
+	[field: NonSerialized]
+	private SecureString _oldPassword;
+
+	/// <summary>
+	/// Old password.
+	/// </summary>
+	[DataMember]
+	public SecureString OldPassword
+	{
+		get => _oldPassword;
+		set => _oldPassword = value;
+	}
+
+	/// <inheritdoc />
+	protected override void CopyTo(ChangePasswordMessage destination)
+	{
+		base.CopyTo(destination);
+
+		destination.TransactionId = TransactionId;
+		destination.UserName = UserName;
+		destination.OldPassword = OldPassword;
+		destination.NewPassword = NewPassword;
+		destination.Error = Error;
+	}
+
+	/// <inheritdoc />
+	public override string ToString()
+	{
+		var str = base.ToString();
+
+		if (Error != null)
+			str += $",Error={Error.Message}";
+
+		return str;
 	}
 }

@@ -1,175 +1,202 @@
-#region S# License
-/******************************************************************************************
-NOTICE!!!  This program and source code is owned and licensed by
-StockSharp, LLC, www.stocksharp.com
-Viewing or use of this code requires your acceptance of the license
-agreement found at https://github.com/StockSharp/StockSharp/blob/master/LICENSE
-Removal of this comment is a violation of the license agreement.
+namespace StockSharp.Messages;
 
-Project: StockSharp.Messages.Messages
-File: InMemoryMessageChannel.cs
-Created: 2015, 11, 11, 2:32 PM
-
-Copyright 2010 by StockSharp, LLC
-*******************************************************************************************/
-#endregion S# License
-namespace StockSharp.Messages
+/// <summary>
+/// Message channel, based on the queue and operate within a single process.
+/// </summary>
+public class InMemoryMessageChannel : IMessageChannel
 {
-	using System;
-	using System.Globalization;
+	private readonly IMessageQueue _queue;
+	private readonly Action<Exception> _errorHandler;
 
-	using Ecng.Common;
+	private readonly SyncObject _suspendLock = new();
 
-	using StockSharp.Localization;
-	using StockSharp.Logging;
+	private int _version;
 
 	/// <summary>
-	/// Message channel, based on the queue and operate within a single process.
+	/// Initializes a new instance of the <see cref="InMemoryMessageChannel"/>.
 	/// </summary>
-	public class InMemoryMessageChannel : Cloneable<IMessageChannel>, IMessageChannel
+	/// <param name="queue">Message queue.</param>
+	/// <param name="name">Channel name.</param>
+	/// <param name="errorHandler">Error handler.</param>
+	public InMemoryMessageChannel(IMessageQueue queue, string name, Action<Exception> errorHandler)
 	{
-		private static readonly MemoryStatisticsValue<Message> _msgStat = new MemoryStatisticsValue<Message>(LocalizedStrings.Messages);
+		if (name.IsEmpty())
+			throw new ArgumentNullException(nameof(name));
 
-		static InMemoryMessageChannel()
+		Name = name;
+
+		_queue = queue ?? throw new ArgumentNullException(nameof(queue));
+		_errorHandler = errorHandler ?? throw new ArgumentNullException(nameof(errorHandler));
+
+		_queue.Close();
+	}
+
+	/// <summary>
+	/// Handler name.
+	/// </summary>
+	public string Name { get; }
+
+	/// <summary>
+	/// Message queue count.
+	/// </summary>
+	public int MessageCount => _queue.Count;
+
+	/// <summary>
+	/// Max message queue count.
+	/// </summary>
+	/// <remarks>
+	/// The default value is -1, which corresponds to the size without limitations.
+	/// </remarks>
+	public int MaxMessageCount
+	{
+		get => _queue.MaxSize;
+		set => _queue.MaxSize = value;
+	}
+
+	/// <summary>
+	/// The channel cannot be opened.
+	/// </summary>
+	public bool Disabled { get; set; }
+
+	private ChannelStates _state = ChannelStates.Stopped;
+
+	/// <inheritdoc />
+	public ChannelStates State
+	{
+		get => _state;
+		private set
 		{
-			MemoryStatistics.Instance.Values.Add(_msgStat);
+			if (_state == value)
+				return;
+
+			_state = value;
+			StateChanged?.Invoke();
 		}
+	}
 
-		private readonly Action<Exception> _errorHandler;
-		private readonly MessagePriorityQueue _messageQueue = new MessagePriorityQueue();
+	/// <inheritdoc />
+	public event Action StateChanged;
 
-		/// <summary>
-		/// Initializes a new instance of the <see cref="InMemoryMessageChannel"/>.
-		/// </summary>
-		/// <param name="name">Channel name.</param>
-		/// <param name="errorHandler">Error handler.</param>
-		public InMemoryMessageChannel(string name, Action<Exception> errorHandler)
-		{
-			if (name.IsEmpty())
-				throw new ArgumentNullException(nameof(name));
+	/// <inheritdoc />
+	public void Open()
+	{
+		if (Disabled)
+			return;
 
-			if (errorHandler == null)
-				throw new ArgumentNullException(nameof(errorHandler));
+		State = ChannelStates.Started;
+		_queue.Open();
 
-			Name = name;
+		var version = Interlocked.Increment(ref _version);
 
-			_errorHandler = errorHandler;
-			_messageQueue.Close();
-		}
-
-		/// <summary>
-		/// Handler name.
-		/// </summary>
-		public string Name { get; }
-
-		/// <summary>
-		/// Message queue count.
-		/// </summary>
-		public int MessageCount => _messageQueue.Count;
-
-		/// <summary>
-		/// Max message queue count.
-		/// </summary>
-		/// <remarks>
-		/// The default value is -1, which corresponds to the size without limitations.
-		/// </remarks>
-		public int MaxMessageCount
-		{
-			get { return _messageQueue.MaxSize; }
-			set { _messageQueue.MaxSize = value; }
-		}
-
-		/// <summary>
-		/// Channel closing event.
-		/// </summary>
-		public event Action Closed;
-
-		/// <summary>
-		/// Is channel opened.
-		/// </summary>
-		public bool IsOpened => !_messageQueue.IsClosed;
-
-		/// <summary>
-		/// Open channel.
-		/// </summary>
-		public void Open()
-		{
-			_messageQueue.Open();
-
-			ThreadingHelper
-				.Thread(() => CultureInfo.InvariantCulture.DoInCulture(() =>
+		ThreadingHelper
+			.Thread(() => Do.Invariant(() =>
+			{
+				while (this.IsOpened())
 				{
-					while (!_messageQueue.IsClosed)
+					try
 					{
-						try
-						{
-							Message message;
+						if (!_queue.TryDequeue(out var message))
+							break;
 
-							if (!_messageQueue.TryDequeue(out message))
-							{
+						if (State == ChannelStates.Suspended)
+						{
+							_suspendLock.Wait();
+
+							if (!this.IsOpened())
 								break;
-							}
-
-							//if (!(message is TimeMessage) && message.GetType().Name != "BasketMessage")
-							//	Console.WriteLine("<< ({0}) {1}", System.Threading.Thread.CurrentThread.Name, message);
-
-							_msgStat.Remove(message);
-							NewOutMessage?.Invoke(message);
 						}
-						catch (Exception ex)
-						{
-							_errorHandler(ex);
-						}
+
+						if (_version != version)
+							break;
+
+						NewOutMessage?.Invoke(message);
 					}
+					catch (Exception ex)
+					{
+						_errorHandler(ex);
+					}
+				}
 
-					Closed?.Invoke();
-				}))
-				.Name($"{Name} channel thread.")
-				//.Culture(CultureInfo.InvariantCulture)
-				.Launch();
-		}
+				State = ChannelStates.Stopped;
+			}))
+			.Name($"{Name} channel thread.")
+			//.Culture(CultureInfo.InvariantCulture)
+			.Launch();
+	}
 
-		/// <summary>
-		/// Close channel.
-		/// </summary>
-		public void Close()
+	/// <inheritdoc />
+	public void Close()
+	{
+		State = ChannelStates.Stopping;
+
+		_queue.Close();
+		_queue.Clear();
+
+		_suspendLock.Pulse();
+	}
+
+	void IMessageChannel.Suspend()
+	{
+		State = ChannelStates.Suspended;
+	}
+
+	void IMessageChannel.Resume()
+	{
+		State = ChannelStates.Started;
+		_suspendLock.PulseAll();
+	}
+
+	void IMessageChannel.Clear()
+	{
+		_queue.Clear();
+	}
+
+	/// <inheritdoc />
+	public bool SendInMessage(Message message)
+	{
+		if (!this.IsOpened())
 		{
-			_messageQueue.Close();
+			//throw new InvalidOperationException();
+			return false;
 		}
 
-		/// <summary>
-		/// Send message.
-		/// </summary>
-		/// <param name="message">Message.</param>
-		public void SendInMessage(Message message)
+		if (State == ChannelStates.Suspended)
 		{
-			if (!IsOpened)
-				throw new InvalidOperationException();
+			_suspendLock.Wait();
 
-			//if (!(message is TimeMessage) && message.GetType().Name != "BasketMessage")
-			//	Console.WriteLine(">> ({0}) {1}", System.Threading.Thread.CurrentThread.Name, message);
-
-			_msgStat.Add(message);
-			_messageQueue.Enqueue(message);
+			if (!this.IsOpened())
+				return false;
 		}
 
-		/// <summary>
-		/// New message event.
-		/// </summary>
-		public event Action<Message> NewOutMessage;
+		_queue.Enqueue(message);
 
-		void IDisposable.Dispose()
+		return true;
+	}
+
+	/// <inheritdoc />
+	public event Action<Message> NewOutMessage;
+
+	/// <summary>
+	/// Create a copy of <see cref="InMemoryMessageChannel"/>.
+	/// </summary>
+	/// <returns>Copy.</returns>
+	public virtual IMessageChannel Clone()
+	{
+		return new InMemoryMessageChannel(_queue, Name, _errorHandler)
 		{
-			Close();
-		}
+			MaxMessageCount = MaxMessageCount,
+		};
+	}
 
-		/// <summary>
-		/// Create a copy of <see cref="InMemoryMessageChannel"/>.
-		/// </summary>
-		/// <returns>Copy.</returns>
-		public override IMessageChannel Clone()
-		{
-			return new InMemoryMessageChannel(Name, _errorHandler) { MaxMessageCount = MaxMessageCount };
-		}
+	object ICloneable.Clone()
+	{
+		return Clone();
+	}
+
+	void IDisposable.Dispose()
+	{
+		Close();
+
+		GC.SuppressFinalize(this);
 	}
 }

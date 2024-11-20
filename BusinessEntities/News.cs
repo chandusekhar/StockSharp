@@ -1,153 +1,159 @@
-#region S# License
-/******************************************************************************************
-NOTICE!!!  This program and source code is owned and licensed by
-StockSharp, LLC, www.stocksharp.com
-Viewing or use of this code requires your acceptance of the license
-agreement found at https://github.com/StockSharp/StockSharp/blob/master/LICENSE
-Removal of this comment is a violation of the license agreement.
+namespace StockSharp.BusinessEntities;
 
-Project: StockSharp.BusinessEntities.BusinessEntities
-File: News.cs
-Created: 2015, 11, 11, 2:32 PM
-
-Copyright 2010 by StockSharp, LLC
-*******************************************************************************************/
-#endregion S# License
-namespace StockSharp.BusinessEntities
+/// <summary>
+/// News.
+/// </summary>
+[Serializable]
+[DataContract]
+[Display(
+	ResourceType = typeof(LocalizedStrings),
+	Name = LocalizedStrings.NewsKey,
+	Description = LocalizedStrings.NewsDescKey)]
+public class News : NotifiableObject
 {
-	using System;
-	using System.Collections.Generic;
-	using System.Runtime.Serialization;
-	using System.Xml.Serialization;
-
-	using Ecng.ComponentModel;
-	using Ecng.Serialization;
-
-	using StockSharp.Messages;
-	using StockSharp.Localization;
+	/// <summary>
+	/// News ID.
+	/// </summary>
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.IdKey,
+		Description = LocalizedStrings.NewsIdKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public string Id { get; set; }
 
 	/// <summary>
-	/// News.
+	/// Exchange board for which the news is published.
 	/// </summary>
-	[Serializable]
-	[System.Runtime.Serialization.DataContract]
-	[DisplayNameLoc(LocalizedStrings.Str395Key)]
-	[DescriptionLoc(LocalizedStrings.Str510Key)]
-	public class News : NotifiableObject, IExtendableEntity
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.BoardKey,
+		Description = LocalizedStrings.ElectronicBoardDescKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public ExchangeBoard Board { get; set; }
+
+	/// <summary>
+	/// Security, for which news have been published.
+	/// </summary>
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.SecurityKey,
+		Description = LocalizedStrings.NewsSecurityKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public Security Security { get; set; }
+
+	/// <summary>
+	/// News source.
+	/// </summary>
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.SourceKey,
+		Description = LocalizedStrings.NewsSourceKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public string Source { get; set; }
+
+	/// <summary>
+	/// Header.
+	/// </summary>
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.HeaderKey,
+		Description = LocalizedStrings.HeaderKey + LocalizedStrings.Dot,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public string Headline { get; set; }
+
+	private string _story;
+
+	/// <summary>
+	/// News text.
+	/// </summary>
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.TextKey,
+		Description = LocalizedStrings.NewsTextKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public string Story
 	{
-		/// <summary>
-		/// News ID.
-		/// </summary>
-		[DataMember]
-		[DisplayNameLoc(LocalizedStrings.IdKey)]
-		[DescriptionLoc(LocalizedStrings.NewsIdKey)]
-		[MainCategory]
-		//[Identity]
-		public string Id { get; set; }
-
-		/// <summary>
-		/// Exchange board for which the news is published.
-		/// </summary>
-		[RelationSingle(IdentityType = typeof(string))]
-		[DataMember]
-		[DisplayNameLoc(LocalizedStrings.Str511Key)]
-		[DescriptionLoc(LocalizedStrings.Str512Key)]
-		[MainCategory]
-		public ExchangeBoard Board { get; set; }
-
-		/// <summary>
-		/// Security, for which news have been published.
-		/// </summary>
-		[RelationSingle(IdentityType = typeof(string))]
-		[DataMember]
-		[DisplayNameLoc(LocalizedStrings.SecurityKey)]
-		[DescriptionLoc(LocalizedStrings.Str513Key)]
-		[MainCategory]
-		public Security Security { get; set; }
-
-		/// <summary>
-		/// News source.
-		/// </summary>
-		[DataMember]
-		[DisplayNameLoc(LocalizedStrings.Str213Key)]
-		[DescriptionLoc(LocalizedStrings.Str214Key)]
-		[MainCategory]
-		public string Source { get; set; }
-
-		/// <summary>
-		/// Header.
-		/// </summary>
-		[DataMember]
-		[DisplayNameLoc(LocalizedStrings.Str215Key)]
-		[DescriptionLoc(LocalizedStrings.Str215Key, true)]
-		[MainCategory]
-		public string Headline { get; set; }
-
-		/// <summary>
-		/// News text.
-		/// </summary>
-		[DataMember]
-		[DisplayNameLoc(LocalizedStrings.Str217Key)]
-		[DescriptionLoc(LocalizedStrings.Str218Key)]
-		[MainCategory]
-		public string Story
+		get => _story;
+		set
 		{
-			get { return _story; }
-			set
-			{
-				_story = value;
-				NotifyChanged(nameof(Story));
-			}
+			_story = value;
+			NotifyChanged();
 		}
+	}
 
-		/// <summary>
-		/// Time of news arrival.
-		/// </summary>
-		[DataMember]
-		[DisplayNameLoc(LocalizedStrings.TimeKey)]
-		[DescriptionLoc(LocalizedStrings.Str220Key)]
-		[MainCategory]
-		public DateTimeOffset ServerTime { get; set; }
+	/// <summary>
+	/// Time of news arrival.
+	/// </summary>
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.TimeKey,
+		Description = LocalizedStrings.NewsTimeKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public DateTimeOffset ServerTime { get; set; }
 
-		/// <summary>
-		/// News received local time.
-		/// </summary>
-		[DataMember]
-		[DisplayNameLoc(LocalizedStrings.Str514Key)]
-		[DescriptionLoc(LocalizedStrings.Str515Key)]
-		[MainCategory]
-		public DateTimeOffset LocalTime { get; set; }
+	/// <summary>
+	/// News received local time.
+	/// </summary>
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.LocalTimeKey,
+		Description = LocalizedStrings.LocalTimeDescKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public DateTimeOffset LocalTime { get; set; }
 
-		/// <summary>
-		/// News link in the internet.
-		/// </summary>
-		[DataMember]
-		[DisplayNameLoc(LocalizedStrings.Str221Key)]
-		[DescriptionLoc(LocalizedStrings.Str222Key)]
-		[MainCategory]
-		[Url]
-		public Uri Url { get; set; }
+	/// <summary>
+	/// News link in the internet.
+	/// </summary>
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.LinkKey,
+		Description = LocalizedStrings.NewsLinkKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	//[Url]
+	public string Url { get; set; }
 
-		[field: NonSerialized]
-		private IDictionary<object, object> _extensionInfo;
+	/// <summary>
+	/// News priority.
+	/// </summary>
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.PriorityKey,
+		Description = LocalizedStrings.NewsPriorityKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public NewsPriorities? Priority { get; set; }
 
-		private string _story;
+	/// <summary>
+	/// Language.
+	/// </summary>
+	[DataMember]
+	public string Language { get; set; }
 
-		/// <summary>
-		/// Extended information.
-		/// </summary>
-		/// <remarks>
-		/// Required when extra information is stored in the program.
-		/// </remarks>
-		[Ignore]
-		[XmlIgnore]
-		[DisplayNameLoc(LocalizedStrings.ExtendedInfoKey)]
-		[DescriptionLoc(LocalizedStrings.Str427Key)]
-		[MainCategory]
-		public IDictionary<object, object> ExtensionInfo
-		{
-			get { return _extensionInfo; }
-			set { _extensionInfo = value; }
-		}
+	/// <summary>
+	/// Expiration date.
+	/// </summary>
+	[DataMember]
+	public DateTimeOffset? ExpiryDate { get; set; }
+
+	/// <summary>
+	/// Sequence number.
+	/// </summary>
+	/// <remarks>Zero means no information.</remarks>
+	[DataMember]
+	public long SeqNum { get; set; }
+
+	/// <inheritdoc />
+	public override string ToString()
+	{
+		return $"{ServerTime} {Headline} {Story} {Source}";
 	}
 }

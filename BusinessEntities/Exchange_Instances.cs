@@ -1,648 +1,1109 @@
-#region S# License
-/******************************************************************************************
-NOTICE!!!  This program and source code is owned and licensed by
-StockSharp, LLC, www.stocksharp.com
-Viewing or use of this code requires your acceptance of the license
-agreement found at https://github.com/StockSharp/StockSharp/blob/master/LICENSE
-Removal of this comment is a violation of the license agreement.
+namespace StockSharp.BusinessEntities;
 
-Project: StockSharp.BusinessEntities.BusinessEntities
-File: Exchange_Instances.cs
-Created: 2015, 11, 11, 2:32 PM
-
-Copyright 2010 by StockSharp, LLC
-*******************************************************************************************/
-#endregion S# License
-namespace StockSharp.BusinessEntities
+partial class Exchange
 {
-	using Ecng.Common;
-
-	partial class Exchange
+	/// <summary>
+	/// Information about <see cref="Test"/>.
+	/// </summary>
+	public static Exchange Test { get; } = new()
 	{
-		static Exchange()
-		{
-			Test = new Exchange
-			{
-				Name = "TEST",
-				RusName = "Тестовая биржа",
-				EngName = "Test Exchange",
-			};
-
-			Moex = new Exchange
-			{
-				Name = "MOEX",
-				RusName = "Московская биржа",
-				EngName = "Moscow Exchange",
-				CountryCode = CountryCodes.RU,
-			};
-
-			Spb = new Exchange
-			{
-				Name = "SPB",
-				RusName = "Санкт-Петербургская биржа",
-				EngName = "Saint-Petersburg Exchange",
-				CountryCode = CountryCodes.RU,
-			};
-
-			Ux = new Exchange
-			{
-				Name = "UX",
-				RusName = "Украинская биржа",
-				EngName = "Ukrain Exchange",
-				CountryCode = CountryCodes.UA,
-			};
-
-			Amex = new Exchange
-			{
-				Name = "AMEX",
-				RusName = "Американская фондовая биржа",
-				EngName = "American Stock Exchange",
-				CountryCode = CountryCodes.US,
-			};
-
-			Cme = new Exchange
-			{
-				Name = "CME",
-				RusName = "Чикагская товарная биржа",
-				EngName = "Chicago Mercantile Exchange",
-				CountryCode = CountryCodes.US,
-			};
-
-			Cce = new Exchange
-			{
-				Name = "CCE",
-				RusName = "Чикагская климатическая биржа",
-				EngName = "Chicago Climate Exchange",
-				CountryCode = CountryCodes.US,
-			};
-
-			Cbot = new Exchange
-			{
-				Name = "CBOT",
-				RusName = "Чикагская торговая палата",
-				EngName = "Chicago Board of Trade",
-				CountryCode = CountryCodes.US,
-			};
-
-			Nymex = new Exchange
-			{
-				Name = "NYMEX",
-				RusName = "Нью-Йоркская товарная биржа",
-				EngName = "New York Mercantile Exchange",
-				CountryCode = CountryCodes.US,
-			};
-
-			Nyse = new Exchange
-			{
-				Name = "NYSE",
-				RusName = "Нью-Йоркская фондовая биржа",
-				EngName = "New York Stock Exchange",
-				CountryCode = CountryCodes.US,
-			};
-
-			Nasdaq = new Exchange
-			{
-				Name = "NASDAQ",
-				RusName = "Насдак",
-				EngName = "NASDAQ",
-				CountryCode = CountryCodes.US,
-			};
-
-			Nqlx = new Exchange
-			{
-				Name = "NQLX",
-				RusName = "Насдак LM",
-				EngName = "Nasdaq-Liffe Markets",
-				CountryCode = CountryCodes.US,
-			};
-
-			Tsx = new Exchange
-			{
-				Name = "TSX",
-				RusName = "Фондовая биржа Торонто",
-				EngName = "Toronto Stock Exchange",
-				CountryCode = CountryCodes.CA,
-			};
-
-			Lse = new Exchange
-			{
-				Name = "LSE",
-				RusName = "Лондонская фондовая биржа",
-				EngName = "London Stock Exchange",
-				CountryCode = CountryCodes.GB,
-			};
-
-			Tse = new Exchange
-			{
-				Name = "TSE",
-				RusName = "Токийская фондовая биржа",
-				EngName = "Tokio Stock Exchange",
-				CountryCode = CountryCodes.JP,
-			};
-
-			Hkex = new Exchange
-			{
-				Name = "HKEX",
-				RusName = "Гонконгская фондовая биржа",
-				EngName = "Hong Kong Stock Exchange",
-				CountryCode = CountryCodes.HK,
-			};
-
-			Hkfe = new Exchange
-			{
-				Name = "HKFE",
-				RusName = "Гонконгская фьючерсная биржа",
-				EngName = "Hong Kong Futures Exchange",
-				CountryCode = CountryCodes.HK,
-			};
-
-			Sse = new Exchange
-			{
-				Name = "SSE",
-				RusName = "Шанхаская фондовая биржа",
-				EngName = "Shanghai Stock Exchange",
-				CountryCode = CountryCodes.CN,
-			};
-
-			Szse = new Exchange
-			{
-				Name = "SZSE",
-				RusName = "Шэньчжэньская фондовая биржа",
-				EngName = "Shenzhen Stock Exchange",
-				CountryCode = CountryCodes.CN,
-			};
-
-			Tsec = new Exchange
-			{
-				Name = "TSEC",
-				RusName = "Тайваньская фондовая биржа",
-				EngName = "Taiwan Stock Exchange",
-				CountryCode = CountryCodes.TW,
-			};
-
-			Sgx = new Exchange
-			{
-				Name = "SGX",
-				RusName = "Сингапурская биржа",
-				EngName = "Singapore Exchange",
-				CountryCode = CountryCodes.SG,
-			};
-
-			Pse = new Exchange
-			{
-				Name = "PSE",
-				RusName = "Филиппинская фондовая биржа",
-				EngName = "Philippine Stock Exchange",
-				CountryCode = CountryCodes.PH,
-			};
-
-			Klse = new Exchange
-			{
-				Name = "MYX",
-				RusName = "Малайзийская биржа",
-				EngName = "Bursa Malaysia",
-				CountryCode = CountryCodes.MY,
-			};
-
-			Idx = new Exchange
-			{
-				Name = "IDX",
-				RusName = "Индонезийская фондовая биржа",
-				EngName = "Indonesia Stock Exchange",
-				CountryCode = CountryCodes.ID,
-			};
-
-			Set = new Exchange
-			{
-				Name = "SET",
-				RusName = "Фондовая биржа Таиланда",
-				EngName = "Stock Exchange of Thailand",
-				CountryCode = CountryCodes.TH,
-			};
-
-			Bse = new Exchange
-			{
-				Name = "BSE",
-				RusName = "Бомбейская фондовая биржа",
-				EngName = "Bombay Stock Exchange",
-				CountryCode = CountryCodes.IN,
-			};
-
-			Nse = new Exchange
-			{
-				Name = "NSE",
-				RusName = "Национальная фондовая биржа Индии",
-				EngName = "National Stock Exchange of India",
-				CountryCode = CountryCodes.IN,
-			};
-
-			Cse = new Exchange
-			{
-				Name = "CSE",
-				RusName = "Колумбийская фондовая биржа",
-				EngName = "Colombo Stock Exchange",
-				CountryCode = CountryCodes.CO,
-			};
-
-			Krx = new Exchange
-			{
-				Name = "KRX",
-				RusName = "Корейская биржа",
-				EngName = "Korea Exchange",
-				CountryCode = CountryCodes.KR,
-			};
-
-			Asx = new Exchange
-			{
-				Name = "ASX",
-				RusName = "Австралийская фондовая биржа",
-				EngName = "Australian Securities Exchange",
-				CountryCode = CountryCodes.AU,
-			};
-
-			Nzx = new Exchange
-			{
-				Name = "NZSX",
-				RusName = "Новозеландская биржа",
-				EngName = "New Zealand Exchange",
-				CountryCode = CountryCodes.NZ,
-			};
-
-			Tase = new Exchange
-			{
-				Name = "TASE",
-				RusName = "Тель-Авивская фондовая биржа",
-				EngName = "Tel Aviv Stock Exchange",
-				CountryCode = CountryCodes.IL,
-			};
-
-			Fwb = new Exchange
-			{
-				Name = "FWB",
-				RusName = "Франкфуртская фондовая биржа",
-				EngName = "Frankfurt Stock Exchange",
-				CountryCode = CountryCodes.DE,
-			};
-
-			Mse = new Exchange
-			{
-				Name = "MSE",
-				RusName = "Мадридская фондовая биржа",
-				EngName = "Madrid Stock Exchange",
-				CountryCode = CountryCodes.ES,
-			};
-
-			Swx = new Exchange
-			{
-				Name = "SWX",
-				RusName = "Швейцарская биржа",
-				EngName = "Swiss Exchange",
-				CountryCode = CountryCodes.CH,
-			};
-
-			Jse = new Exchange
-			{
-				Name = "JSE",
-				RusName = "Йоханнесбургская фондовая биржа",
-				EngName = "Johannesburg Stock Exchange",
-				CountryCode = CountryCodes.ZA,
-			};
-
-			Lmax = new Exchange
-			{
-				Name = "LMAX",
-				RusName = "Форекс брокер LMAX",
-				EngName = "LMAX",
-				CountryCode = CountryCodes.GB,
-			};
-
-			DukasCopy = new Exchange
-			{
-				Name = "DUKAS",
-				RusName = "Форекс брокер DukasCopy",
-				EngName = "DukasCopy",
-				CountryCode = CountryCodes.CH,
-			};
-
-			GainCapital = new Exchange
-			{
-				Name = "GAIN",
-				RusName = "Форекс брокер GAIN Capital",
-				EngName = "GAIN Capital",
-				CountryCode = CountryCodes.US,
-			};
-
-			MBTrading = new Exchange
-			{
-				Name = "MBT",
-				RusName = "Форекс брокер MB Trading",
-				EngName = "MB Trading",
-				CountryCode = CountryCodes.US,
-			};
-
-			TrueFX = new Exchange
-			{
-				Name = "TRUEFX",
-				RusName = "Форекс брокер TrueFX",
-				EngName = "TrueFX",
-				CountryCode = CountryCodes.US,
-			};
-
-			Cfh = new Exchange
-			{
-				Name = "CFH",
-				RusName = "CFH",
-				EngName = "CFH",
-				CountryCode = CountryCodes.GB,
-			};
-
-			Ond = new Exchange
-			{
-				Name = "OANDA",
-				RusName = "Форекс брокер OANDA",
-				EngName = "OANDA",
-				CountryCode = CountryCodes.US,
-			};
-
-			Integral = new Exchange
-			{
-				Name = "INTGRL",
-				RusName = "Integral",
-				EngName = "Integral",
-				CountryCode = CountryCodes.US,
-			};
-
-			Btce = new Exchange
-			{
-				Name = "BTCE",
-				RusName = "BTCE",
-				EngName = "BTCE",
-				CountryCode = CountryCodes.RU,
-			};
-
-			BitStamp = new Exchange
-			{
-				Name = "BITSTAMP",
-				RusName = "BitStamp",
-				EngName = "BitStamp",
-				CountryCode = CountryCodes.GB,
-			};
-
-			BtcChina = new Exchange
-			{
-				Name = "BTCCHINA",
-				RusName = "BTCChina",
-				EngName = "BTCChina",
-				CountryCode = CountryCodes.CN,
-			};
-
-			Icbit = new Exchange
-			{
-				Name = "ICBIT",
-				RusName = "iCBIT",
-				EngName = "iCBIT",
-				CountryCode = CountryCodes.RU,
-			};
-		}
-
-		/// <summary>
-		/// Information about the test exchange, which has no limitations in work schedule.
-		/// </summary>
-		public static Exchange Test { get; private set; }
-
-		/// <summary>
-		/// Information about MOEX (Moscow Exchange).
-		/// </summary>
-		public static Exchange Moex { get; private set; }
-
-		/// <summary>
-		/// Saint-Petersburg Exchange (SPB).
-		/// </summary>
-		public static Exchange Spb { get; private set; }
-
-		/// <summary>
-		/// Information about UX.
-		/// </summary>
-		public static Exchange Ux { get; private set; }
-
-		/// <summary>
-		/// Information about AMEX (American Stock Exchange).
-		/// </summary>
-		public static Exchange Amex { get; private set; }
-
-		/// <summary>
-		/// Information about CME (Chicago Mercantile Exchange).
-		/// </summary>
-		public static Exchange Cme { get; private set; }
-
-		/// <summary>
-		/// Information about CBOT (Chicago Board of Trade).
-		/// </summary>
-		public static Exchange Cbot { get; private set; }
-
-		/// <summary>
-		/// Information about CCE (Chicago Climate Exchange).
-		/// </summary>
-		public static Exchange Cce { get; private set; }
-
-		/// <summary>
-		/// Information about NYMEX (New York Mercantile Exchange).
-		/// </summary>
-		public static Exchange Nymex { get; private set; }
-
-		/// <summary>
-		/// Information about NYSE (New York Stock Exchange).
-		/// </summary>
-		public static Exchange Nyse { get; private set; }
-
-		/// <summary>
-		/// Information about NASDAQ.
-		/// </summary>
-		public static Exchange Nasdaq { get; private set; }
-
-		/// <summary>
-		/// Information about NQLX.
-		/// </summary>
-		public static Exchange Nqlx { get; private set; }
-
-		/// <summary>
-		/// Information about LSE (London Stock Exchange).
-		/// </summary>
-		public static Exchange Lse { get; private set; }
-
-		/// <summary>
-		/// Information about TSE (Tokio Stock Exchange).
-		/// </summary>
-		public static Exchange Tse { get; private set; }
-
-		/// <summary>
-		/// Information about HKEX (Hong Kong Stock Exchange).
-		/// </summary>
-		public static Exchange Hkex { get; private set; }
-
-		/// <summary>
-		/// Information about HKFE (Hong Kong Futures Exchange).
-		/// </summary>
-		public static Exchange Hkfe { get; private set; }
-
-		/// <summary>
-		/// Information about Sse (Shanghai Stock Exchange).
-		/// </summary>
-		public static Exchange Sse { get; private set; }
-
-		/// <summary>
-		/// Information about SZSE (Shenzhen Stock Exchange).
-		/// </summary>
-		public static Exchange Szse { get; private set; }
-
-		/// <summary>
-		/// Information about TSX (Toronto Stock Exchange).
-		/// </summary>
-		public static Exchange Tsx { get; private set; }
-
-		/// <summary>
-		/// Information about FWB (Frankfurt Stock Exchange).
-		/// </summary>
-		public static Exchange Fwb { get; private set; }
-
-		/// <summary>
-		/// Information about ASX (Australian Securities Exchange).
-		/// </summary>
-		public static Exchange Asx { get; private set; }
-
-		/// <summary>
-		/// Information about NZX (New Zealand Exchange).
-		/// </summary>
-		public static Exchange Nzx { get; private set; }
-
-		/// <summary>
-		/// Information about BSE (Bombay Stock Exchange).
-		/// </summary>
-		public static Exchange Bse { get; private set; }
-
-		/// <summary>
-		/// Information about NSE (National Stock Exchange of India).
-		/// </summary>
-		public static Exchange Nse { get; private set; }
-
-		/// <summary>
-		/// Information about SWX (Swiss Exchange).
-		/// </summary>
-		public static Exchange Swx { get; private set; }
-
-		/// <summary>
-		/// Information about KRX (Korea Exchange).
-		/// </summary>
-		public static Exchange Krx { get; private set; }
-
-		/// <summary>
-		/// Information about MSE (Madrid Stock Exchange).
-		/// </summary>
-		public static Exchange Mse { get; private set; }
-
-		/// <summary>
-		/// Information about JSE (Johannesburg Stock Exchange).
-		/// </summary>
-		public static Exchange Jse { get; private set; }
-
-		/// <summary>
-		/// Information about SGX (Singapore Exchange).
-		/// </summary>
-		public static Exchange Sgx { get; private set; }
-
-		/// <summary>
-		/// Information about TSEC (Taiwan Stock Exchange).
-		/// </summary>
-		public static Exchange Tsec { get; private set; }
-
-		/// <summary>
-		/// Information about PSE (Philippine Stock Exchange).
-		/// </summary>
-		public static Exchange Pse { get; private set; }
-
-		/// <summary>
-		/// Information about KLSE (Bursa Malaysia).
-		/// </summary>
-		public static Exchange Klse { get; private set; }
-
-		/// <summary>
-		/// Information about IDX (Indonesia Stock Exchange).
-		/// </summary>
-		public static Exchange Idx { get; private set; }
-
-		/// <summary>
-		/// Information about SET (Stock Exchange of Thailand).
-		/// </summary>
-		public static Exchange Set { get; private set; }
-
-		/// <summary>
-		/// Information about CSE (Colombo Stock Exchange).
-		/// </summary>
-		public static Exchange Cse { get; private set; }
-
-		/// <summary>
-		/// Information about TASE (Tel Aviv Stock Exchange).
-		/// </summary>
-		public static Exchange Tase { get; private set; }
-
-		/// <summary>
-		/// Information about LMAX (LMAX Exchange).
-		/// </summary>
-		public static Exchange Lmax { get; private set; }
-
-		/// <summary>
-		/// Information about DukasCopy.
-		/// </summary>
-		public static Exchange DukasCopy { get; private set; }
-
-		/// <summary>
-		/// Information about GAIN Capital.
-		/// </summary>
-		public static Exchange GainCapital { get; private set; }
-
-		/// <summary>
-		/// Information about MB Trading.
-		/// </summary>
-		public static Exchange MBTrading { get; private set; }
-
-		/// <summary>
-		/// Information about TrueFX.
-		/// </summary>
-		public static Exchange TrueFX { get; private set; }
-
-		/// <summary>
-		/// Information about CFH.
-		/// </summary>
-		public static Exchange Cfh { get; private set; }
-
-		/// <summary>
-		/// Information about OANDA.
-		/// </summary>
-		public static Exchange Ond { get; private set; }
-
-		/// <summary>
-		/// Information about Integral.
-		/// </summary>
-		public static Exchange Integral { get; private set; }
-
-		/// <summary>
-		/// Information about BTCE.
-		/// </summary>
-		public static Exchange Btce { get; private set; }
-
-		/// <summary>
-		/// Information about BitStamp.
-		/// </summary>
-		public static Exchange BitStamp { get; private set; }
-
-		/// <summary>
-		/// Information about BtcChina.
-		/// </summary>
-		public static Exchange BtcChina { get; private set; }
-
-		/// <summary>
-		/// Information about Icbit.
-		/// </summary>
-		public static Exchange Icbit { get; private set; }
-	}
+		Name = "TEST",
+		FullNameLoc = LocalizedStrings.TestExchangeKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Moex"/>.
+	/// </summary>
+	public static Exchange Moex { get; } = new()
+	{
+		Name = "MOEX",
+		FullNameLoc = LocalizedStrings.MoscowExchangeKey,
+		CountryCode = CountryCodes.RU,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Spb"/>.
+	/// </summary>
+	public static Exchange Spb { get; } = new()
+	{
+		Name = "SPB",
+		FullNameLoc = LocalizedStrings.SaintPetersburgExchangeKey,
+		CountryCode = CountryCodes.RU,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Ux"/>.
+	/// </summary>
+	public static Exchange Ux { get; } = new()
+	{
+		Name = "UX",
+		FullNameLoc = LocalizedStrings.UkrainExchangeKey,
+		CountryCode = CountryCodes.UA,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Amex"/>.
+	/// </summary>
+	public static Exchange Amex { get; } = new()
+	{
+		Name = "AMEX",
+		FullNameLoc = LocalizedStrings.AmericanStockExchangeKey,
+		CountryCode = CountryCodes.US,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Cme"/>.
+	/// </summary>
+	public static Exchange Cme { get; } = new()
+	{
+		Name = "CME",
+		FullNameLoc = LocalizedStrings.ChicagoMercantileExchangeKey,
+		CountryCode = CountryCodes.US,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Cbot"/>.
+	/// </summary>
+	public static Exchange Cbot { get; } = new()
+	{
+		Name = "CBOT",
+		FullNameLoc = LocalizedStrings.ChicagoBoardofTradeKey,
+		CountryCode = CountryCodes.US,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Cce"/>.
+	/// </summary>
+	public static Exchange Cce { get; } = new()
+	{
+		Name = "CCE",
+		FullNameLoc = LocalizedStrings.ChicagoClimateExchangeKey,
+		CountryCode = CountryCodes.US,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Nymex"/>.
+	/// </summary>
+	public static Exchange Nymex { get; } = new()
+	{
+		Name = "NYMEX",
+		FullNameLoc = LocalizedStrings.NewYorkMercantileExchangeKey,
+		CountryCode = CountryCodes.US,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Nyse"/>.
+	/// </summary>
+	public static Exchange Nyse { get; } = new()
+	{
+		Name = "NYSE",
+		FullNameLoc = LocalizedStrings.NewYorkStockExchangeKey,
+		CountryCode = CountryCodes.US,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Nasdaq"/>.
+	/// </summary>
+	public static Exchange Nasdaq { get; } = new()
+	{
+		Name = "NASDAQ",
+		FullNameLoc = LocalizedStrings.NASDAQKey,
+		CountryCode = CountryCodes.US,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Nqlx"/>.
+	/// </summary>
+	public static Exchange Nqlx { get; } = new()
+	{
+		Name = "NQLX",
+		FullNameLoc = LocalizedStrings.NasdaqLiffeMarketsKey,
+		CountryCode = CountryCodes.US,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Lse"/>.
+	/// </summary>
+	public static Exchange Lse { get; } = new()
+	{
+		Name = "LSE",
+		FullNameLoc = LocalizedStrings.LondonStockExchangeKey,
+		CountryCode = CountryCodes.GB,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Lme"/>.
+	/// </summary>
+	public static Exchange Lme { get; } = new()
+	{
+		Name = "LME",
+		FullNameLoc = LocalizedStrings.LondonMetalExchangeKey,
+		CountryCode = CountryCodes.GB,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Tse"/>.
+	/// </summary>
+	public static Exchange Tse { get; } = new()
+	{
+		Name = "TSE",
+		FullNameLoc = LocalizedStrings.TokyoStockExchangeKey,
+		CountryCode = CountryCodes.JP,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Hkex"/>.
+	/// </summary>
+	public static Exchange Hkex { get; } = new()
+	{
+		Name = "HKEX",
+		FullNameLoc = LocalizedStrings.HongKongStockExchangeKey,
+		CountryCode = CountryCodes.HK,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Hkfe"/>.
+	/// </summary>
+	public static Exchange Hkfe { get; } = new()
+	{
+		Name = "HKFE",
+		FullNameLoc = LocalizedStrings.HongKongFuturesExchangeKey,
+		CountryCode = CountryCodes.HK,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Sse"/>.
+	/// </summary>
+	public static Exchange Sse { get; } = new()
+	{
+		Name = "SSE",
+		FullNameLoc = LocalizedStrings.ShanghaiStockExchangeKey,
+		CountryCode = CountryCodes.CN,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Szse"/>.
+	/// </summary>
+	public static Exchange Szse { get; } = new()
+	{
+		Name = "SZSE",
+		FullNameLoc = LocalizedStrings.ShenzhenStockExchangeKey,
+		CountryCode = CountryCodes.CN,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Tsx"/>.
+	/// </summary>
+	public static Exchange Tsx { get; } = new()
+	{
+		Name = "TSX",
+		FullNameLoc = LocalizedStrings.TorontoStockExchangeKey,
+		CountryCode = CountryCodes.CA,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Fwb"/>.
+	/// </summary>
+	public static Exchange Fwb { get; } = new()
+	{
+		Name = "FWB",
+		FullNameLoc = LocalizedStrings.FrankfurtStockExchangeKey,
+		CountryCode = CountryCodes.DE,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Asx"/>.
+	/// </summary>
+	public static Exchange Asx { get; } = new()
+	{
+		Name = "ASX",
+		FullNameLoc = LocalizedStrings.AustralianSecuritiesExchangeKey,
+		CountryCode = CountryCodes.AU,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Nzx"/>.
+	/// </summary>
+	public static Exchange Nzx { get; } = new()
+	{
+		Name = "NZSX",
+		FullNameLoc = LocalizedStrings.NewZealandExchangeKey,
+		CountryCode = CountryCodes.NZ,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Bse"/>.
+	/// </summary>
+	public static Exchange Bse { get; } = new()
+	{
+		Name = "BSE",
+		FullNameLoc = LocalizedStrings.BombayStockExchangeKey,
+		CountryCode = CountryCodes.IN,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Nse"/>.
+	/// </summary>
+	public static Exchange Nse { get; } = new()
+	{
+		Name = "NSE",
+		FullNameLoc = LocalizedStrings.NationalStockExchangeofIndiaKey,
+		CountryCode = CountryCodes.IN,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Swx"/>.
+	/// </summary>
+	public static Exchange Swx { get; } = new()
+	{
+		Name = "SWX",
+		FullNameLoc = LocalizedStrings.SwissExchangeKey,
+		CountryCode = CountryCodes.CH,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Krx"/>.
+	/// </summary>
+	public static Exchange Krx { get; } = new()
+	{
+		Name = "KRX",
+		FullNameLoc = LocalizedStrings.KoreaExchangeKey,
+		CountryCode = CountryCodes.KR,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Mse"/>.
+	/// </summary>
+	public static Exchange Mse { get; } = new()
+	{
+		Name = "MSE",
+		FullNameLoc = LocalizedStrings.MadridStockExchangeKey,
+		CountryCode = CountryCodes.ES,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Jse"/>.
+	/// </summary>
+	public static Exchange Jse { get; } = new()
+	{
+		Name = "JSE",
+		FullNameLoc = LocalizedStrings.JohannesburgStockExchangeKey,
+		CountryCode = CountryCodes.ZA,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Sgx"/>.
+	/// </summary>
+	public static Exchange Sgx { get; } = new()
+	{
+		Name = "SGX",
+		FullNameLoc = LocalizedStrings.SingaporeExchangeKey,
+		CountryCode = CountryCodes.SG,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Tsec"/>.
+	/// </summary>
+	public static Exchange Tsec { get; } = new()
+	{
+		Name = "TSEC",
+		FullNameLoc = LocalizedStrings.TaiwanStockExchangeKey,
+		CountryCode = CountryCodes.TW,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Pse"/>.
+	/// </summary>
+	public static Exchange Pse { get; } = new()
+	{
+		Name = "PSE",
+		FullNameLoc = LocalizedStrings.PhilippineStockExchangeKey,
+		CountryCode = CountryCodes.PH,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Klse"/>.
+	/// </summary>
+	public static Exchange Klse { get; } = new()
+	{
+		Name = "MYX",
+		FullNameLoc = LocalizedStrings.BursaMalaysiaKey,
+		CountryCode = CountryCodes.MY,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Idx"/>.
+	/// </summary>
+	public static Exchange Idx { get; } = new()
+	{
+		Name = "IDX",
+		FullNameLoc = LocalizedStrings.IndonesiaStockExchangeKey,
+		CountryCode = CountryCodes.ID,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Set"/>.
+	/// </summary>
+	public static Exchange Set { get; } = new()
+	{
+		Name = "SET",
+		FullNameLoc = LocalizedStrings.StockExchangeofThailandKey,
+		CountryCode = CountryCodes.TH,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Cse"/>.
+	/// </summary>
+	public static Exchange Cse { get; } = new()
+	{
+		Name = "CSE",
+		FullNameLoc = LocalizedStrings.ColomboStockExchangeKey,
+		CountryCode = CountryCodes.CO,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Tase"/>.
+	/// </summary>
+	public static Exchange Tase { get; } = new()
+	{
+		Name = "TASE",
+		FullNameLoc = LocalizedStrings.TelAvivStockExchangeKey,
+		CountryCode = CountryCodes.IL,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Lmax"/>.
+	/// </summary>
+	public static Exchange Lmax { get; } = new()
+	{
+		Name = "LMAX",
+		FullNameLoc = LocalizedStrings.LmaxKey,
+		CountryCode = CountryCodes.GB,
+	};
+
+	/// <summary>
+	/// Information about <see cref="DukasCopy"/>.
+	/// </summary>
+	public static Exchange DukasCopy { get; } = new()
+	{
+		Name = "DUKAS",
+		FullNameLoc = LocalizedStrings.DukasCopyKey,
+		CountryCode = CountryCodes.CH,
+	};
+
+	/// <summary>
+	/// Information about <see cref="GainCapital"/>.
+	/// </summary>
+	public static Exchange GainCapital { get; } = new()
+	{
+		Name = "GAIN",
+		FullNameLoc = LocalizedStrings.GainCapitalKey,
+		CountryCode = CountryCodes.US,
+	};
+
+	/// <summary>
+	/// Information about <see cref="MBTrading"/>.
+	/// </summary>
+	public static Exchange MBTrading { get; } = new()
+	{
+		Name = "MBT",
+		FullNameLoc = LocalizedStrings.MBTradingKey,
+		CountryCode = CountryCodes.US,
+	};
+
+	/// <summary>
+	/// Information about <see cref="TrueFX"/>.
+	/// </summary>
+	public static Exchange TrueFX { get; } = new()
+	{
+		Name = "TRUEFX",
+		FullNameLoc = LocalizedStrings.TrueFXKey,
+		CountryCode = CountryCodes.US,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Cfh"/>.
+	/// </summary>
+	public static Exchange Cfh { get; } = new()
+	{
+		Name = "CFH",
+		FullNameLoc = LocalizedStrings.CFHKey,
+		CountryCode = CountryCodes.GB,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Ond"/>.
+	/// </summary>
+	public static Exchange Ond { get; } = new()
+	{
+		Name = "OANDA",
+		FullNameLoc = LocalizedStrings.OandaKey,
+		CountryCode = CountryCodes.US,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Integral"/>.
+	/// </summary>
+	public static Exchange Integral { get; } = new()
+	{
+		Name = "INTGRL",
+		FullNameLoc = LocalizedStrings.IntegralKey,
+		CountryCode = CountryCodes.US,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Btce"/>.
+	/// </summary>
+	public static Exchange Btce { get; } = new()
+	{
+		Name = "BTCE",
+		FullNameLoc = LocalizedStrings.BtceKey,
+		CountryCode = CountryCodes.RU,
+	};
+
+	/// <summary>
+	/// Information about <see cref="BitStamp"/>.
+	/// </summary>
+	public static Exchange BitStamp { get; } = new()
+	{
+		Name = "BITSTAMP",
+		FullNameLoc = LocalizedStrings.BitStampKey,
+		CountryCode = CountryCodes.GB,
+	};
+
+	/// <summary>
+	/// Information about <see cref="BtcChina"/>.
+	/// </summary>
+	public static Exchange BtcChina { get; } = new()
+	{
+		Name = "BTCCHINA",
+		FullNameLoc = LocalizedStrings.BtcChinaKey,
+		CountryCode = CountryCodes.CN,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Icbit"/>.
+	/// </summary>
+	public static Exchange Icbit { get; } = new()
+	{
+		Name = "ICBIT",
+		FullNameLoc = LocalizedStrings.IcBitKey,
+		CountryCode = CountryCodes.RU,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Currenex"/>.
+	/// </summary>
+	public static Exchange Currenex { get; } = new()
+	{
+		Name = "CURRENEX",
+		FullNameLoc = LocalizedStrings.CurrenexKey,
+		CountryCode = CountryCodes.US,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Fxcm"/>.
+	/// </summary>
+	public static Exchange Fxcm { get; } = new()
+	{
+		Name = "FXCM",
+		FullNameLoc = LocalizedStrings.FxcmKey,
+		CountryCode = CountryCodes.US,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Poloniex"/>.
+	/// </summary>
+	public static Exchange Poloniex { get; } = new()
+	{
+		Name = "PLNX",
+		FullNameLoc = LocalizedStrings.PoloniexKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Kraken"/>.
+	/// </summary>
+	public static Exchange Kraken { get; } = new()
+	{
+		Name = "KRKN",
+		FullNameLoc = LocalizedStrings.KrakenKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Bittrex"/>.
+	/// </summary>
+	public static Exchange Bittrex { get; } = new()
+	{
+		Name = "BTRX",
+		FullNameLoc = LocalizedStrings.BittrexKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Bitfinex"/>.
+	/// </summary>
+	public static Exchange Bitfinex { get; } = new()
+	{
+		Name = "BTFX",
+		FullNameLoc = LocalizedStrings.BitfinexKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Coinbase"/>.
+	/// </summary>
+	public static Exchange Coinbase { get; } = new()
+	{
+		Name = "CNBS",
+		FullNameLoc = LocalizedStrings.CoinbaseKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Gdax"/>.
+	/// </summary>
+	public static Exchange Gdax { get; } = new()
+	{
+		Name = "GDAX",
+		FullNameLoc = LocalizedStrings.GdaxKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Bithumb"/>.
+	/// </summary>
+	public static Exchange Bithumb { get; } = new()
+	{
+		Name = "BTHB",
+		FullNameLoc = LocalizedStrings.BithumbKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="HitBtc"/>.
+	/// </summary>
+	public static Exchange HitBtc { get; } = new()
+	{
+		Name = "HTBTC",
+		FullNameLoc = LocalizedStrings.HitBtcKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="OkCoin"/>.
+	/// </summary>
+	public static Exchange OkCoin { get; } = new()
+	{
+		Name = "OKCN",
+		FullNameLoc = LocalizedStrings.OkcoinKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Coincheck"/>.
+	/// </summary>
+	public static Exchange Coincheck { get; } = new()
+	{
+		Name = "CNCK",
+		FullNameLoc = LocalizedStrings.CoincheckKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Binance"/>.
+	/// </summary>
+	public static Exchange Binance { get; } = new()
+	{
+		Name = "BNB",
+		FullNameLoc = LocalizedStrings.BinanceKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Bitexbook"/>.
+	/// </summary>
+	public static Exchange Bitexbook { get; } = new()
+	{
+		Name = "BTXB",
+		FullNameLoc = LocalizedStrings.BitexbookKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Bitmex"/>.
+	/// </summary>
+	public static Exchange Bitmex { get; } = new()
+	{
+		Name = "BMEX",
+		FullNameLoc = LocalizedStrings.BitmexKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Cex"/>.
+	/// </summary>
+	public static Exchange Cex { get; } = new()
+	{
+		Name = "CEXIO",
+		FullNameLoc = LocalizedStrings.CexKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Cryptopia"/>.
+	/// </summary>
+	public static Exchange Cryptopia { get; } = new()
+	{
+		Name = "CRTP",
+		FullNameLoc = LocalizedStrings.CryptopiaKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Okex"/>.
+	/// </summary>
+	public static Exchange Okex { get; } = new()
+	{
+		Name = "OKEX",
+		FullNameLoc = LocalizedStrings.OkexKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Bitmart"/>.
+	/// </summary>
+	public static Exchange Bitmart { get; } = new()
+	{
+		Name = "BIMA",
+		FullNameLoc = LocalizedStrings.BitmartKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Yobit"/>.
+	/// </summary>
+	public static Exchange Yobit { get; } = new()
+	{
+		Name = "YBIT",
+		FullNameLoc = LocalizedStrings.YobitKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="CoinExchange"/>.
+	/// </summary>
+	public static Exchange CoinExchange { get; } = new()
+	{
+		Name = "CNEX",
+		FullNameLoc = LocalizedStrings.CoinExchangeKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="LiveCoin"/>.
+	/// </summary>
+	public static Exchange LiveCoin { get; } = new()
+	{
+		Name = "LVCN",
+		FullNameLoc = LocalizedStrings.LiveCoinKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Exmo"/>.
+	/// </summary>
+	public static Exchange Exmo { get; } = new()
+	{
+		Name = "EXMO",
+		FullNameLoc = LocalizedStrings.ExmoKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Deribit"/>.
+	/// </summary>
+	public static Exchange Deribit { get; } = new()
+	{
+		Name = "DRBT",
+		FullNameLoc = LocalizedStrings.DeribitKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Kucoin"/>.
+	/// </summary>
+	public static Exchange Kucoin { get; } = new()
+	{
+		Name = "KUCN",
+		FullNameLoc = LocalizedStrings.KucoinKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Liqui"/>.
+	/// </summary>
+	public static Exchange Liqui { get; } = new()
+	{
+		Name = "LIQI",
+		FullNameLoc = LocalizedStrings.LiquiKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Huobi"/>.
+	/// </summary>
+	public static Exchange Huobi { get; } = new()
+	{
+		Name = "HUBI",
+		FullNameLoc = LocalizedStrings.HuobiKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="IEX"/>.
+	/// </summary>
+	public static Exchange IEX { get; } = new()
+	{
+		Name = "IEX",
+		FullNameLoc = LocalizedStrings.IEXKey,
+		CountryCode = CountryCodes.US,
+	};
+
+	/// <summary>
+	/// Information about <see cref="AlphaVantage"/>.
+	/// </summary>
+	public static Exchange AlphaVantage { get; } = new()
+	{
+		Name = "ALVG",
+		FullNameLoc = LocalizedStrings.AlphaVantageKey,
+		CountryCode = CountryCodes.US,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Bitbank"/>.
+	/// </summary>
+	public static Exchange Bitbank { get; } = new()
+	{
+		Name = "BTBN",
+		FullNameLoc = LocalizedStrings.BitbankKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Zaif"/>.
+	/// </summary>
+	public static Exchange Zaif { get; } = new()
+	{
+		Name = "ZAIF",
+		FullNameLoc = LocalizedStrings.ZaifKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Quoinex"/>.
+	/// </summary>
+	public static Exchange Quoinex { get; } = new()
+	{
+		Name = "QINX",
+		FullNameLoc = LocalizedStrings.QuoinexKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Wiki"/>.
+	/// </summary>
+	public static Exchange Wiki { get; } = new()
+	{
+		Name = "WIKI",
+		FullNameLoc = LocalizedStrings.WIKIKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Idax"/>.
+	/// </summary>
+	public static Exchange Idax { get; } = new()
+	{
+		Name = "IDAX",
+		FullNameLoc = LocalizedStrings.IdaxKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Digifinex"/>.
+	/// </summary>
+	public static Exchange Digifinex { get; } = new()
+	{
+		Name = "DGFX",
+		FullNameLoc = LocalizedStrings.DigifinexKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="TradeOgre"/>.
+	/// </summary>
+	public static Exchange TradeOgre { get; } = new()
+	{
+		Name = "TOGR",
+		FullNameLoc = LocalizedStrings.TradeOgreKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="CoinCap"/>.
+	/// </summary>
+	public static Exchange CoinCap { get; } = new()
+	{
+		Name = "CNCP",
+		FullNameLoc = LocalizedStrings.CoinCapKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Coinigy"/>.
+	/// </summary>
+	public static Exchange Coinigy { get; } = new()
+	{
+		Name = "CNGY",
+		FullNameLoc = LocalizedStrings.CoinigyKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="LBank"/>.
+	/// </summary>
+	public static Exchange LBank { get; } = new()
+	{
+		Name = "LBNK",
+		FullNameLoc = LocalizedStrings.LBankKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="BitMax"/>.
+	/// </summary>
+	public static Exchange BitMax { get; } = new()
+	{
+		Name = "BMAX",
+		FullNameLoc = LocalizedStrings.BitMaxKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="BW"/>.
+	/// </summary>
+	public static Exchange BW { get; } = new()
+	{
+		Name = "BW",
+		FullNameLoc = LocalizedStrings.BWKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Bibox"/>.
+	/// </summary>
+	public static Exchange Bibox { get; } = new()
+	{
+		Name = "BBOX",
+		FullNameLoc = LocalizedStrings.BiboxKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="CoinBene"/>.
+	/// </summary>
+	public static Exchange CoinBene { get; } = new()
+	{
+		Name = "CNBN",
+		FullNameLoc = LocalizedStrings.CoinBeneKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="BitZ"/>.
+	/// </summary>
+	public static Exchange BitZ { get; } = new()
+	{
+		Name = "BITZ",
+		FullNameLoc = LocalizedStrings.BitZKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="ZB"/>.
+	/// </summary>
+	public static Exchange ZB { get; } = new()
+	{
+		Name = "ZB",
+		FullNameLoc = LocalizedStrings.ZBKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Tradier"/>.
+	/// </summary>
+	public static Exchange Tradier { get; } = new()
+	{
+		Name = "TRDR",
+		FullNameLoc = LocalizedStrings.TradierKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="SwSq"/>.
+	/// </summary>
+	public static Exchange SwSq { get; } = new()
+	{
+		Name = "SWSQ",
+		FullNameLoc = LocalizedStrings.SwissQuoteKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="StockSharp"/>.
+	/// </summary>
+	public static Exchange StockSharp { get; } = new()
+	{
+		Name = "STSH",
+		FullNameLoc = LocalizedStrings.StockSharpKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Upbit"/>.
+	/// </summary>
+	public static Exchange Upbit { get; } = new()
+	{
+		Name = "UPBT",
+		FullNameLoc = LocalizedStrings.UpbitKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="CoinEx"/>.
+	/// </summary>
+	public static Exchange CoinEx { get; } = new()
+	{
+		Name = "CIEX",
+		FullNameLoc = LocalizedStrings.CoinExKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="FatBtc"/>.
+	/// </summary>
+	public static Exchange FatBtc { get; } = new()
+	{
+		Name = "FTBT",
+		FullNameLoc = LocalizedStrings.FatBtcKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Latoken"/>.
+	/// </summary>
+	public static Exchange Latoken { get; } = new()
+	{
+		Name = "LTKN",
+		FullNameLoc = LocalizedStrings.LatokenKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Gopax"/>.
+	/// </summary>
+	public static Exchange Gopax { get; } = new()
+	{
+		Name = "GPAX",
+		FullNameLoc = LocalizedStrings.GopaxKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="CoinHub"/>.
+	/// </summary>
+	public static Exchange CoinHub { get; } = new()
+	{
+		Name = "CNHB",
+		FullNameLoc = LocalizedStrings.CoinHubKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Hotbit"/>.
+	/// </summary>
+	public static Exchange Hotbit { get; } = new()
+	{
+		Name = "HTBT",
+		FullNameLoc = LocalizedStrings.HotbitKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Bitalong"/>.
+	/// </summary>
+	public static Exchange Bitalong { get; } = new()
+	{
+		Name = "BTLG",
+		FullNameLoc = LocalizedStrings.BitalongKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="PrizmBit"/>.
+	/// </summary>
+	public static Exchange PrizmBit { get; } = new()
+	{
+		Name = "PRZM",
+		FullNameLoc = LocalizedStrings.PrizmBitKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="DigitexFutures"/>.
+	/// </summary>
+	public static Exchange DigitexFutures { get; } = new()
+	{
+		Name = "DGFT",
+		FullNameLoc = LocalizedStrings.DigitexFuturesKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Bovespa"/>.
+	/// </summary>
+	public static Exchange Bovespa { get; } = new()
+	{
+		Name = "B3",
+		FullNameLoc = LocalizedStrings.BrasilBolsaKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="Bvmt"/>.
+	/// </summary>
+	public static Exchange Bvmt { get; } = new()
+	{
+		Name = "BVMT",
+		FullNameLoc = LocalizedStrings.TunisBvmtKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="IQFeed"/>.
+	/// </summary>
+	public static Exchange IQFeed { get; } = new()
+	{
+		Name = "IQFD",
+		FullNameLoc = LocalizedStrings.IQFeedKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="IBKR"/>.
+	/// </summary>
+	public static Exchange IBKR { get; } = new()
+	{
+		Name = "IBKR",
+		FullNameLoc = LocalizedStrings.InteractiveBrokersKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="STRLG"/>.
+	/// </summary>
+	public static Exchange STRLG { get; } = new()
+	{
+		Name = "STRLG",
+		FullNameLoc = LocalizedStrings.SterlingKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="QNDL"/>.
+	/// </summary>
+	public static Exchange QNDL { get; } = new()
+	{
+		Name = "QNDL",
+		FullNameLoc = LocalizedStrings.QuandlKey,
+	};
+
+	/// <summary>
+	/// Information about <see cref="QTFD"/>.
+	/// </summary>
+	public static Exchange QTFD { get; } = new()
+	{
+		Name = "QTFD",
+		FullNameLoc = LocalizedStrings.QuantFeed,
+	};
+
+	/// <summary>
+	/// Information about <see cref="FTX"/>.
+	/// </summary>
+	public static Exchange FTX { get; } = new()
+	{
+		Name = "FTX",
+		FullNameLoc = LocalizedStrings.FTX,
+		CountryCode = CountryCodes.BS,
+	};
+
+	/// <summary>
+	/// Information about board <see cref="YHF"/>.
+	/// </summary>
+	public static Exchange YHF { get; } = new()
+	{
+		Name = "YHF",
+		FullNameLoc = LocalizedStrings.Yahoo,
+	};
+
+	/// <summary>
+	/// Information about board <see cref="EUREX"/>.
+	/// </summary>
+	public static Exchange EUREX { get; } = new()
+	{
+		Name = nameof(EUREX),
+	};
 }

@@ -1,23 +1,33 @@
-namespace StockSharp.Algo
+namespace StockSharp.Algo;
+
+/// <summary>
+/// The message, containing security id to remove.
+/// </summary>
+[DataContract]
+[Serializable]
+public class SecurityRemoveMessage : Message, ISecurityIdMessage
 {
-	using StockSharp.Messages;
+	/// <summary>
+	/// Initializes a new instance of the <see cref="SecurityRemoveMessage"/>.
+	/// </summary>
+	public SecurityRemoveMessage()
+		: base(ExtendedMessageTypes.RemoveSecurity)
+	{
+	}
+
+	/// <inheritdoc />
+	[DataMember]
+	public SecurityId SecurityId { get; set; }
 
 	/// <summary>
-	/// The message, containing security id to remove.
+	/// Create a copy of <see cref="SecurityRemoveMessage"/>.
 	/// </summary>
-	public class SecurityRemoveMessage : Message
+	/// <returns>Copy.</returns>
+	public override Message Clone()
 	{
-		/// <summary>
-		/// Initializes a new instance of the <see cref="SecurityRemoveMessage"/>.
-		/// </summary>
-		public SecurityRemoveMessage()
-			: base(ExtendedMessageTypes.RemoveSecurity)
+		return new SecurityRemoveMessage
 		{
-		}
-
-		/// <summary>
-		/// Security ID.
-		/// </summary>
-		public SecurityId SecurityId { get; set; }
+			SecurityId = SecurityId,
+		};
 	}
 }

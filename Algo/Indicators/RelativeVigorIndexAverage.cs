@@ -1,107 +1,86 @@
-#region S# License
-/******************************************************************************************
-NOTICE!!!  This program and source code is owned and licensed by
-StockSharp, LLC, www.stocksharp.com
-Viewing or use of this code requires your acceptance of the license
-agreement found at https://github.com/StockSharp/StockSharp/blob/master/LICENSE
-Removal of this comment is a violation of the license agreement.
+namespace StockSharp.Algo.Indicators;
 
-Project: StockSharp.Algo.Indicators.Algo
-File: RelativeVigorIndexAverage.cs
-Created: 2015, 11, 11, 2:32 PM
-
-Copyright 2010 by StockSharp, LLC
-*******************************************************************************************/
-#endregion S# License
-namespace StockSharp.Algo.Indicators
+/// <summary>
+/// The weight-average part of indicator <see cref="RelativeVigorIndex"/>.
+/// </summary>
+[IndicatorIn(typeof(CandleIndicatorValue))]
+[IndicatorHidden]
+public class RelativeVigorIndexAverage : LengthIndicator<decimal>
 {
-	using System.Collections.Generic;
-
-	using StockSharp.Algo.Candles;
+	private readonly CircularBuffer<ICandleMessage> _buffer;
 
 	/// <summary>
-	/// The weight-average part of indicator <see cref="RelativeVigorIndex"/>.
+	/// Initializes a new instance of the <see cref="RelativeVigorIndexAverage"/>.
 	/// </summary>
-	public class RelativeVigorIndexAverage : LengthIndicator<decimal>
+	public RelativeVigorIndexAverage()
 	{
-		private readonly List<Candle> _buffer = new List<Candle>();
+		_buffer = new(4);
+		Length = _buffer.Capacity;
+	}
 
-		/// <summary>
-		/// Initializes a new instance of the <see cref="RelativeVigorIndexAverage"/>.
-		/// </summary>
-		public RelativeVigorIndexAverage()
+	/// <inheritdoc />
+	public override void Reset()
+	{
+		base.Reset();
+
+		_buffer.Clear();
+		_buffer.Capacity = Length;
+
+		Buffer.Capacity = Length;
+	}
+
+	/// <inheritdoc />
+	protected override IIndicatorValue OnProcess(IIndicatorValue input)
+	{
+		var candle = input.ToCandle();
+
+		if (input.IsFinal)
 		{
-			Length = 4;
+			_buffer.PushBack(candle);
 		}
 
-		/// <summary>
-		/// To reset the indicator status to initial. The method is called each time when initial settings are changed (for example, the length of period).
-		/// </summary>
-		public override void Reset()
+		if (IsFormed)
 		{
-			base.Reset();
+			decimal valueUp, valueDn;
 
-			_buffer.Clear();
-			Buffer.Clear();
-		}
-
-		/// <summary>
-		/// To handle the input value.
-		/// </summary>
-		/// <param name="input">The input value.</param>
-		/// <returns>The resulting value.</returns>
-		protected override IIndicatorValue OnProcess(IIndicatorValue input)
-		{
-			var newValue = input.GetValue<Candle>();
+			var value0 = _buffer[0];
+			var value1 = _buffer[1];
+			var value2 = _buffer[2];
+			var value3 = _buffer[3];
 
 			if (input.IsFinal)
 			{
-				_buffer.Add(newValue);
+				valueUp = ((value0.ClosePrice - value0.OpenPrice) +
+				           2 * (value1.ClosePrice - value1.OpenPrice) +
+				           2 * (value2.ClosePrice - value2.OpenPrice) +
+				           (value3.ClosePrice - value3.OpenPrice)) / 6m;
 
-				if (_buffer.Count > Length)
-					_buffer.RemoveAt(0);
+				valueDn = ((value0.HighPrice - value0.LowPrice) +
+				           2 * (value1.HighPrice - value1.LowPrice) +
+				           2 * (value2.HighPrice - value2.LowPrice) +
+				           (value3.HighPrice - value3.LowPrice)) / 6m;
 			}
-
-			if (IsFormed)
+			else
 			{
-				decimal valueUp, valueDn;
+				valueUp = ((value1.ClosePrice - value1.OpenPrice) +
+				           2 * (value2.ClosePrice - value2.OpenPrice) +
+				           2 * (value3.ClosePrice - value3.OpenPrice) +
+						   (candle.ClosePrice - candle.OpenPrice)) / 6m;
 
-				if (input.IsFinal)
-				{
-					valueUp = ((_buffer[0].ClosePrice - _buffer[0].OpenPrice) +
-					           2*(_buffer[1].ClosePrice - _buffer[1].OpenPrice) +
-					           2*(_buffer[2].ClosePrice - _buffer[2].OpenPrice) +
-					           (_buffer[3].ClosePrice - _buffer[3].OpenPrice))/6m;
-
-					valueDn = ((_buffer[0].HighPrice - _buffer[0].LowPrice) +
-					           2*(_buffer[1].HighPrice - _buffer[1].LowPrice) +
-					           2*(_buffer[2].HighPrice - _buffer[2].LowPrice) +
-					           (_buffer[3].HighPrice - _buffer[3].LowPrice))/6m;
-				}
-				else
-				{
-					valueUp = ((_buffer[1].ClosePrice - _buffer[1].OpenPrice) +
-					           2*(_buffer[2].ClosePrice - _buffer[2].OpenPrice) +
-					           2*(_buffer[3].ClosePrice - _buffer[3].OpenPrice) +
-							   (newValue.ClosePrice - newValue.OpenPrice)) / 6m;
-
-					valueDn = ((_buffer[1].HighPrice - _buffer[1].LowPrice) +
-					           2*(_buffer[2].HighPrice - _buffer[2].LowPrice) +
-					           2*(_buffer[3].HighPrice - _buffer[3].LowPrice) +
-							   (newValue.HighPrice - newValue.LowPrice)) / 6m;
-				}
-
-				return new DecimalIndicatorValue(this, valueDn == decimal.Zero 
-					? valueUp 
-					: valueUp / valueDn);
+				valueDn = ((value1.HighPrice - value1.LowPrice) +
+				           2 * (value2.HighPrice - value2.LowPrice) +
+				           2 * (value3.HighPrice - value3.LowPrice) +
+						   (candle.HighPrice - candle.LowPrice)) / 6m;
 			}
 
-			return new DecimalIndicatorValue(this);
+			return new DecimalIndicatorValue(this, valueDn == decimal.Zero 
+				? valueUp 
+				: valueUp / valueDn, input.Time);
 		}
 
-		/// <summary>
-		/// Whether the indicator is set.
-		/// </summary>
-		public override bool IsFormed => _buffer.Count >= Length;
+		return new DecimalIndicatorValue(this, input.Time);
 	}
+
+	/// <inheritdoc />
+	protected override bool CalcIsFormed() => _buffer.Count >= Length;
 }

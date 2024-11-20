@@ -1,106 +1,86 @@
-#region S# License
-/******************************************************************************************
-NOTICE!!!  This program and source code is owned and licensed by
-StockSharp, LLC, www.stocksharp.com
-Viewing or use of this code requires your acceptance of the license
-agreement found at https://github.com/StockSharp/StockSharp/blob/master/LICENSE
-Removal of this comment is a violation of the license agreement.
+﻿namespace StockSharp.Algo.Indicators;
 
-Project: StockSharp.Algo.Indicators.Algo
-File: AverageDirectionalIndex.cs
-Created: 2015, 11, 11, 2:32 PM
-
-Copyright 2010 by StockSharp, LLC
-*******************************************************************************************/
-#endregion S# License
-namespace StockSharp.Algo.Indicators
+/// <summary>
+/// Welles Wilder Average Directional Index.
+/// </summary>
+/// <remarks>
+/// https://doc.stocksharp.com/topics/api/indicators/list_of_indicators/adx.html
+/// </remarks>
+[Display(
+	ResourceType = typeof(LocalizedStrings),
+	Name = LocalizedStrings.AdxKey,
+	Description = LocalizedStrings.AverageDirectionalIndexKey)]
+[Doc("topics/api/indicators/list_of_indicators/adx.html")]
+public class AverageDirectionalIndex : BaseComplexIndicator
 {
-	using System;
-	using System.ComponentModel;
-
-	using Ecng.Serialization;
-
-	using StockSharp.Localization;
+	/// <summary>
+	/// Initializes a new instance of the <see cref="AverageDirectionalIndex"/>.
+	/// </summary>
+	public AverageDirectionalIndex()
+		: this(new DirectionalIndex { Length = 14 }, new WilderMovingAverage { Length = 14 })
+	{
+	}
 
 	/// <summary>
-	/// Welles Wilder Average Directional Index.
+	/// Initializes a new instance of the <see cref="AverageDirectionalIndex"/>.
 	/// </summary>
-	[DisplayName("ADX")]
-	[DescriptionLoc(LocalizedStrings.Str757Key)]
-	public class AverageDirectionalIndex : BaseComplexIndicator
+	/// <param name="dx">Welles Wilder Directional Movement Index.</param>
+	/// <param name="movingAverage">Moving Average.</param>
+	public AverageDirectionalIndex(DirectionalIndex dx, LengthIndicator<decimal> movingAverage)
+		: base(dx, movingAverage)
 	{
-		/// <summary>
-		/// Initializes a new instance of the <see cref="AverageDirectionalIndex"/>.
-		/// </summary>
-		public AverageDirectionalIndex()
-			: this(new DirectionalIndex { Length = 14 }, new WilderMovingAverage { Length = 14 })
+		Dx = dx;
+		MovingAverage = movingAverage;
+		Mode = ComplexIndicatorModes.Sequence;
+	}
+
+	/// <inheritdoc />
+	public override IndicatorMeasures Measure => IndicatorMeasures.Percent;
+
+	/// <summary>
+	/// Welles Wilder Directional Movement Index.
+	/// </summary>
+	[Browsable(false)]
+	public DirectionalIndex Dx { get; }
+
+	/// <summary>
+	/// Moving Average.
+	/// </summary>
+	[Browsable(false)]
+	public LengthIndicator<decimal> MovingAverage { get; }
+
+	/// <summary>
+	/// Period length.
+	/// </summary>
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.PeriodKey,
+		Description = LocalizedStrings.IndicatorPeriodKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public int Length
+	{
+		get => MovingAverage.Length;
+		set
 		{
-		}
-
-		/// <summary>
-		/// Initializes a new instance of the <see cref="AverageDirectionalIndex"/>.
-		/// </summary>
-		/// <param name="dx">Welles Wilder Directional Movement Index.</param>
-		/// <param name="movingAverage">Moving Average.</param>
-		public AverageDirectionalIndex(DirectionalIndex dx, LengthIndicator<decimal> movingAverage)
-		{
-			if (dx == null)
-				throw new ArgumentNullException(nameof(dx));
-
-			if (movingAverage == null)
-				throw new ArgumentNullException(nameof(movingAverage));
-
-			InnerIndicators.Add(Dx = dx);
-			InnerIndicators.Add(MovingAverage = movingAverage);
-			Mode = ComplexIndicatorModes.Sequence;
-		}
-
-		/// <summary>
-		/// Welles Wilder Directional Movement Index.
-		/// </summary>
-		[Browsable(false)]
-		public DirectionalIndex Dx { get; }
-
-		/// <summary>
-		/// Moving Average.
-		/// </summary>
-		[Browsable(false)]
-		public LengthIndicator<decimal> MovingAverage { get; }
-
-		/// <summary>
-		/// Period length.
-		/// </summary>
-		[DisplayNameLoc(LocalizedStrings.Str736Key)]
-		[DescriptionLoc(LocalizedStrings.Str737Key)]
-		[CategoryLoc(LocalizedStrings.GeneralKey)]
-		public virtual int Length
-		{
-			get { return MovingAverage.Length; }
-			set
-			{
-				MovingAverage.Length = Dx.Length = value;
-				Reset();
-			}
-		}
-
-		/// <summary>
-		/// Load settings.
-		/// </summary>
-		/// <param name="settings">Settings storage.</param>
-		public override void Load(SettingsStorage settings)
-		{
-			base.Load(settings);
-			Length = settings.GetValue<int>(nameof(Length));
-		}
-
-		/// <summary>
-		/// Save settings.
-		/// </summary>
-		/// <param name="settings">Settings storage.</param>
-		public override void Save(SettingsStorage settings)
-		{
-			base.Save(settings);
-			settings.SetValue(nameof(Length), Length);
+			MovingAverage.Length = Dx.Length = value;
+			Reset();
 		}
 	}
+
+	/// <inheritdoc />
+	public override void Load(SettingsStorage storage)
+	{
+		base.Load(storage);
+		Length = storage.GetValue<int>(nameof(Length));
+	}
+
+	/// <inheritdoc />
+	public override void Save(SettingsStorage storage)
+	{
+		base.Save(storage);
+		storage.SetValue(nameof(Length), Length);
+	}
+
+	/// <inheritdoc />
+	public override string ToString() => base.ToString() + " " + Length;
 }

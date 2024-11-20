@@ -1,614 +1,770 @@
-#region S# License
-/******************************************************************************************
-NOTICE!!!  This program and source code is owned and licensed by
-StockSharp, LLC, www.stocksharp.com
-Viewing or use of this code requires your acceptance of the license
-agreement found at https://github.com/StockSharp/StockSharp/blob/master/LICENSE
-Removal of this comment is a violation of the license agreement.
+namespace StockSharp.BusinessEntities;
 
-Project: StockSharp.BusinessEntities.BusinessEntities
-File: Order.cs
-Created: 2015, 11, 11, 2:32 PM
-
-Copyright 2010 by StockSharp, LLC
-*******************************************************************************************/
-#endregion S# License
-namespace StockSharp.BusinessEntities
+/// <summary>
+/// Order.
+/// </summary>
+[DataContract]
+[Serializable]
+[Display(
+	ResourceType = typeof(LocalizedStrings),
+	Name = LocalizedStrings.OrderKey,
+	Description = LocalizedStrings.InfoAboutOrderKey)]
+public class Order : NotifiableObject, IOrderMessage
 {
-	using System;
-	using System.Collections.Generic;
-	using System.ComponentModel;
-	using System.Runtime.Serialization;
-	using System.Xml.Serialization;
+	/// <summary>
+	/// Initializes a new instance of the <see cref="Order"/>.
+	/// </summary>
+	public Order()
+	{
+	}
 
-	using Ecng.Common;
-	using Ecng.Collections;
-	using Ecng.ComponentModel;
-	using Ecng.Serialization;
+	private SecurityId? _securityId;
 
-	using StockSharp.Messages;
-	using StockSharp.Localization;
+	SecurityId ISecurityIdMessage.SecurityId
+	{
+		get => _securityId ??= Security?.Id.ToSecurityId() ?? default;
+		set => throw new NotSupportedException();
+	}
+
+	DataType IGeneratedMessage.BuildFrom { get; set; }
+
+	private TimeSpan? _latencyRegistration;
 
 	/// <summary>
-	/// Order.
+	/// Time taken to register an order.
 	/// </summary>
-	[System.Runtime.Serialization.DataContract]
-	[Serializable]
-	[DisplayNameLoc(LocalizedStrings.Str504Key)]
-	[DescriptionLoc(LocalizedStrings.Str516Key)]
-	public class Order : NotifiableObject, IExtendableEntity
+	//[TimeSpan]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.RegistrationKey,
+		Description = LocalizedStrings.OrderRegLatencyKey,
+		GroupName = LocalizedStrings.LatencyKey,
+		Order = 1000)]
+	public TimeSpan? LatencyRegistration
 	{
-		/// <summary>
-		/// Initializes a new instance of the <see cref="Order"/>.
-		/// </summary>
-		public Order()
+		get => _latencyRegistration;
+		set
 		{
+			if (_latencyRegistration == value)
+				return;
+
+			_latencyRegistration = value;
+			NotifyChanged();
 		}
+	}
 
-		private TimeSpan? _latencyRegistration;
+	private TimeSpan? _latencyCancellation;
 
-		/// <summary>
-		/// Time taken to register an order.
-		/// </summary>
-		[TimeSpan]
-		[DisplayNameLoc(LocalizedStrings.Str517Key)]
-		[DescriptionLoc(LocalizedStrings.Str518Key)]
-		[StatisticsCategory]
-		[Nullable]
-		public TimeSpan? LatencyRegistration
+	/// <summary>
+	/// Time taken to cancel an order.
+	/// </summary>
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.CancellationKey,
+		Description = LocalizedStrings.OrderCancelLatencyKey,
+		GroupName = LocalizedStrings.LatencyKey,
+		Order = 1001)]
+	public TimeSpan? LatencyCancellation
+	{
+		get => _latencyCancellation;
+		set
 		{
-			get { return _latencyRegistration; }
-			set
-			{
-				if (_latencyRegistration == value)
-					return;
+			if (_latencyCancellation == value)
+				return;
 
-				_latencyRegistration = value;
-				NotifyChanged(nameof(LatencyRegistration));
-			}
+			_latencyCancellation = value;
+			NotifyChanged();
 		}
+	}
 
-		private TimeSpan? _latencyCancellation;
+	private TimeSpan? _latencyEdition;
 
-		/// <summary>
-		/// Time taken to cancel an order.
-		/// </summary>
-		[TimeSpan]
-		[DisplayNameLoc(LocalizedStrings.Str519Key)]
-		[DescriptionLoc(LocalizedStrings.Str520Key)]
-		[StatisticsCategory]
-		[Nullable]
-		public TimeSpan? LatencyCancellation
+	/// <summary>
+	/// Time taken to edit an order.
+	/// </summary>
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.EditionKey,
+		Description = LocalizedStrings.EditionLatencyKey,
+		GroupName = LocalizedStrings.LatencyKey,
+		Order = 1002)]
+	public TimeSpan? LatencyEdition
+	{
+		get => _latencyEdition;
+		set
 		{
-			get { return _latencyCancellation; }
-			set
-			{
-				if (_latencyCancellation == value)
-					return;
+			if (_latencyEdition == value)
+				return;
 
-				_latencyCancellation = value;
-				NotifyChanged(nameof(LatencyCancellation));
-			}
+			_latencyEdition = value;
+			NotifyChanged();
 		}
+	}
 
-		private long? _id;
+	private long? _id;
 
-		/// <summary>
-		/// Order ID.
-		/// </summary>
-		[DataMember]
-		[DisplayNameLoc(LocalizedStrings.Str361Key)]
-		[DescriptionLoc(LocalizedStrings.OrderIdStringKey, true)]
-		[MainCategory]
-		public long? Id
+	/// <summary>
+	/// Order ID.
+	/// </summary>
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.IdentifierKey,
+		Description = LocalizedStrings.IdStringKey + LocalizedStrings.Dot,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public long? Id
+	{
+		get => _id;
+		set
 		{
-			get { return _id; }
-			set
-			{
-				if (_id == value)
-					return;
+			if (_id == value)
+				return;
 
-				_id = value;
-				NotifyChanged(nameof(Id));
-			}
+			_id = value;
+			NotifyChanged();
 		}
+	}
 
-		private string _stringId;
+	private string _stringId;
 
-		/// <summary>
-		/// Order ID (as string, if electronic board does not use numeric order ID representation).
-		/// </summary>
-		[DataMember]
-		[DisplayNameLoc(LocalizedStrings.Str521Key)]
-		[DescriptionLoc(LocalizedStrings.OrderIdStringDescKey)]
-		[MainCategory]
-		public string StringId
+	/// <summary>
+	/// Order ID (as string, if electronic board does not use numeric order ID representation).
+	/// </summary>
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.IdStringKey,
+		Description = LocalizedStrings.OrderIdStringDescKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public string StringId
+	{
+		get => _stringId;
+		set
 		{
-			get { return _stringId; }
-			set
-			{
-				_stringId = value;
-				NotifyChanged(nameof(StringId));
-			}
+			_stringId = value;
+			NotifyChanged();
 		}
+	}
 
-		private string _boardId;
+	private string _boardId;
 
-		/// <summary>
-		/// Board order id. Uses in case of <see cref="Order.Id"/> and <see cref="Order.StringId"/> is a brokerage system ids.
-		/// </summary>
-		[DataMember]
-		[DisplayNameLoc(LocalizedStrings.Str117Key)]
-		[DescriptionLoc(LocalizedStrings.Str118Key)]
-		[MainCategory]
-		public string BoardId
+	/// <summary>
+	/// Board order id. Uses in case of <see cref="Id"/> and <see cref="StringId"/> is a brokerage system ids.
+	/// </summary>
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.OrderBoardIdKey,
+		Description = LocalizedStrings.OrderBoardIdDescKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public string BoardId
+	{
+		get => _boardId;
+		set
 		{
-			get { return _boardId; }
-			set
-			{
-				_boardId = value;
-				NotifyChanged(nameof(BoardId));
-			}
+			_boardId = value;
+			NotifyChanged();
 		}
+	}
 
-		private DateTimeOffset _time;
+	private DateTimeOffset _time;
 
-		/// <summary>
-		/// Order placing time on exchange.
-		/// </summary>
-		[DataMember]
-		[DisplayNameLoc(LocalizedStrings.Str522Key)]
-		[DescriptionLoc(LocalizedStrings.Str523Key)]
-		[MainCategory]
-		public DateTimeOffset Time
+	/// <summary>
+	/// Order placing time on exchange.
+	/// </summary>
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.RegTimeKey,
+		Description = LocalizedStrings.RegTimeDescKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public DateTimeOffset Time
+	{
+		get => _time;
+		set
 		{
-			get { return _time; }
-			set
-			{
-				if (_time == value)
-					return;
+			if (_time == value)
+				return;
 
-				_time = value;
-				NotifyChanged(nameof(Time));
-
-				if (LastChangeTime.IsDefault())
-					LastChangeTime = value;
-			}
+			_time = value;
+			NotifyChanged();
 		}
+	}
 
-		/// <summary>
-		/// Transaction ID. Automatically set when the <see cref="IConnector.RegisterOrder"/> method called.
-		/// </summary>
-		[DataMember]
-		[DisplayNameLoc(LocalizedStrings.TransactionKey)]
-		[DescriptionLoc(LocalizedStrings.TransactionIdKey, true)]
-		[MainCategory]
-		[Identity]
-		public long TransactionId { get; set; }
+	/// <summary>
+	/// Transaction ID. Automatically set when the <see cref="ITransactionProvider.RegisterOrder"/> method called.
+	/// </summary>
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.TransactionKey,
+		Description = LocalizedStrings.TransactionIdKey + LocalizedStrings.Dot,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public long TransactionId { get; set; }
 
-		/// <summary>
-		/// Security, for which an order is being placed.
-		/// </summary>
-		[RelationSingle(IdentityType = typeof(string))]
-		[DataMember]
-		[DisplayNameLoc(LocalizedStrings.SecurityKey)]
-		[DescriptionLoc(LocalizedStrings.Str524Key)]
-		[MainCategory]
-		public Security Security { get; set; }
+	/// <summary>
+	/// Security, for which an order is being placed.
+	/// </summary>
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.SecurityKey,
+		Description = LocalizedStrings.OrderSecurityKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public Security Security { get; set; }
 
-		private OrderStates _state;
+	private OrderStates _state;
 
-		/// <summary>
-		/// Order state.
-		/// </summary>
-		[DataMember]
-		[DisplayNameLoc(LocalizedStrings.StateKey)]
-		[DescriptionLoc(LocalizedStrings.Str134Key)]
-		[MainCategory]
-		public OrderStates State
+	/// <summary>
+	/// Order state.
+	/// </summary>
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.StateKey,
+		Description = LocalizedStrings.OrderStateDescKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public OrderStates State
+	{
+		get => _state;
+		set
 		{
-			get { return _state; }
-			set
-			{
-				if (_state == value)
-					return;
+			if (_state == value)
+				return;
 
-				_state = value;
-				NotifyChanged(nameof(State));
-			}
+			_state = value;
+			NotifyChanged();
 		}
+	}
 
-		/// <summary>
-		/// Portfolio, in which the order is being traded.
-		/// </summary>
-		[DataMember]
-		[RelationSingle(IdentityType = typeof(string))]
-		[DisplayNameLoc(LocalizedStrings.PortfolioKey)]
-		[DescriptionLoc(LocalizedStrings.Str525Key)]
-		[MainCategory]
-		public Portfolio Portfolio { get; set; }
+	/// <summary>
+	/// Portfolio, in which the order is being traded.
+	/// </summary>
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.PortfolioKey,
+		Description = LocalizedStrings.OrderPortfolioKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public Portfolio Portfolio { get; set; }
 
-		[field: NonSerialized]
-		private readonly Lazy<SynchronizedList<string>> _messages = new Lazy<SynchronizedList<string>>(() => new SynchronizedList<string>());
+	private DateTimeOffset _serverTime;
 
-		/// <summary>
-		/// Messages for order (created by the trading system when registered, changed or cancelled).
-		/// </summary>
-		[XmlIgnore]
-		[Ignore]
-		[DisplayNameLoc(LocalizedStrings.Str526Key)]
-		[DescriptionLoc(LocalizedStrings.Str527Key)]
-		[MainCategory]
-		public ISynchronizedCollection<string> Messages => _messages.Value;
-
-		private DateTimeOffset _lastChangeTime;
-
-		/// <summary>
-		/// Time of last order change (Cancellation, Fill).
-		/// </summary>
-		[DataMember]
-		//[Nullable]
-		[DisplayNameLoc(LocalizedStrings.Str528Key)]
-		[DescriptionLoc(LocalizedStrings.Str529Key)]
-		[MainCategory]
-		public DateTimeOffset LastChangeTime
+	/// <inheritdoc/>
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.ChangedKey,
+		Description = LocalizedStrings.OrderLastChangeTimeKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public DateTimeOffset ServerTime
+	{
+		get => _serverTime;
+		set
 		{
-			get { return _lastChangeTime; }
-			set
-			{
-				if (_lastChangeTime == value)
-					return;
+			if (_serverTime == value)
+				return;
 
-				_lastChangeTime = value;
-				NotifyChanged(nameof(LastChangeTime));
-			}
+			_serverTime = value;
+			NotifyChanged();
 		}
+	}
 
-		private DateTimeOffset _localTime;
+	private DateTimeOffset? _cancelledTime;
 
-		/// <summary>
-		/// Last order change local time (Cancellation, Fill).
-		/// </summary>
-		[DataMember]
-		[DisplayNameLoc(LocalizedStrings.Str530Key)]
-		[DescriptionLoc(LocalizedStrings.Str531Key)]
-		[MainCategory]
-		public DateTimeOffset LocalTime
+	/// <summary>
+	/// Cancelled time.
+	/// </summary>
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.CancelKey,
+		Description = LocalizedStrings.CancelledTimeKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public DateTimeOffset? CancelledTime
+	{
+		get => _cancelledTime;
+		set
 		{
-			get { return _localTime; }
-			set
-			{
-				if (_localTime == value)
-					return;
+			if (_cancelledTime == value)
+				return;
 
-				_localTime = value;
-				NotifyChanged(nameof(LocalTime));
-			}
+			_cancelledTime = value;
+			NotifyChanged();
 		}
+	}
 
-		/// <summary>
-		/// Order price.
-		/// </summary>
-		[DataMember]
-		[DisplayNameLoc(LocalizedStrings.PriceKey)]
-		[DescriptionLoc(LocalizedStrings.OrderPriceKey)]
-		[MainCategory]
-		public decimal Price { get; set; }
+	private DateTimeOffset? _matchedTime;
 
-		private decimal _volume;
-
-		/// <summary>
-		/// Number of contracts in an order.
-		/// </summary>
-		[DataMember]
-		[DisplayNameLoc(LocalizedStrings.VolumeKey)]
-		[DescriptionLoc(LocalizedStrings.OrderVolumeKey)]
-		[MainCategory]
-		public decimal Volume
+	/// <summary>
+	/// Cancelled time.
+	/// </summary>
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.MatchKey,
+		Description = LocalizedStrings.MatchedTimeKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public DateTimeOffset? MatchedTime
+	{
+		get => _matchedTime;
+		set
 		{
-			get { return _volume; }
-			set
-			{
-				_volume = value;
-				VisibleVolume = value;
-			}
+			if (_matchedTime == value)
+				return;
+
+			_matchedTime = value;
+			NotifyChanged();
 		}
+	}
 
-		/// <summary>
-		/// Visible quantity of contracts in order.
-		/// </summary>
-		[DataMember]
-		[DisplayNameLoc(LocalizedStrings.VisibleVolumeKey)]
-		[DescriptionLoc(LocalizedStrings.Str127Key)]
-		[MainCategory]
-		[Nullable]
-		public decimal? VisibleVolume { get; set; }
+	/// <summary>
+	/// Time of last order change (Cancellation, Fill).
+	/// </summary>
+	[Obsolete("Use ServerTime property.")]
+	[Browsable(false)]
+	public DateTimeOffset LastChangeTime
+	{
+		get => ServerTime;
+		set => ServerTime = value;
+	}
 
-		/// <summary>
-		/// Order side (buy or sell).
-		/// </summary>
-		[DataMember]
-		[DisplayNameLoc(LocalizedStrings.Str128Key)]
-		[DescriptionLoc(LocalizedStrings.Str129Key)]
-		[MainCategory]
-		public Sides Direction { get; set; }
+	private DateTimeOffset _localTime;
 
-		private decimal _balance;
-
-		/// <summary>
-		/// Order contracts remainder.
-		/// </summary>
-		[DataMember]
-		[DisplayNameLoc(LocalizedStrings.Str130Key)]
-		[DescriptionLoc(LocalizedStrings.Str131Key)]
-		[MainCategory]
-		public decimal Balance
+	/// <summary>
+	/// Last order change local time (Cancellation, Fill).
+	/// </summary>
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.LocalTimeKey,
+		Description = LocalizedStrings.LocalTimeDescKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public DateTimeOffset LocalTime
+	{
+		get => _localTime;
+		set
 		{
-			get { return _balance; }
-			set
-			{
-				if (_balance == value)
-					return;
+			if (_localTime == value)
+				return;
 
-				_balance = value;
-				NotifyChanged(nameof(Balance));
-			}
+			_localTime = value;
+			NotifyChanged();
 		}
+	}
 
-		private long? _status;
+	/// <summary>
+	/// Order price.
+	/// </summary>
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.PriceKey,
+		Description = LocalizedStrings.OrderPriceKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public decimal Price { get; set; }
 
-		/// <summary>
-		/// System order status.
-		/// </summary>
-		[DataMember]
-		[Nullable]
-		[Browsable(false)]
-		public long? Status
+	/// <summary>
+	/// Number of contracts in the order.
+	/// </summary>
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.VolumeKey,
+		Description = LocalizedStrings.OrderVolumeKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public decimal Volume { get; set; }
+
+	/// <summary>
+	/// Visible quantity of contracts in order.
+	/// </summary>
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.VisibleVolumeKey,
+		Description = LocalizedStrings.VisibleVolumeDescKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public decimal? VisibleVolume { get; set; }
+
+	/// <inheritdoc/>
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.DirectionKey,
+		Description = LocalizedStrings.OrderSideDescKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public Sides Side { get; set; }
+
+	/// <summary>
+	/// Order side (buy or sell).
+	/// </summary>
+	[Browsable(false)]
+	[Obsolete("Use Side property.")]
+	public Sides Direction
+	{
+		get => Side;
+		set => Side = value;
+	}
+
+	private decimal _balance;
+
+	/// <summary>
+	/// Order contracts balance.
+	/// </summary>
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.BalanceKey,
+		Description = LocalizedStrings.OrderBalanceKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public decimal Balance
+	{
+		get => _balance;
+		set
 		{
-			get { return _status; }
-			set
-			{
-				if (_status == value)
-					return;
+			if (_balance == value)
+				return;
 
-				_status = value;
-				NotifyChanged(nameof(Status));
-			}
+			_balance = value;
+			NotifyChanged();
 		}
+	}
 
-		private bool? _isSystem;
+	private long? _status;
 
-		/// <summary>
-		/// Is a system trade.
-		/// </summary>
-		[DataMember]
-		[DisplayNameLoc(LocalizedStrings.Str139Key)]
-		[DescriptionLoc(LocalizedStrings.Str140Key)]
-		[MainCategory]
-		[Nullable]
-		public bool? IsSystem
+	/// <summary>
+	/// System order status.
+	/// </summary>
+	[DataMember]
+	[Browsable(false)]
+	public long? Status
+	{
+		get => _status;
+		set
 		{
-			get { return _isSystem; }
-			set
-			{
-				if (_isSystem == value)
-					return;
+			if (_status == value)
+				return;
 
-				_isSystem = value;
-				NotifyChanged(nameof(IsSystem));
-			}
+			_status = value;
+			NotifyChanged();
 		}
+	}
 
-		/// <summary>
-		/// Placed order comment.
-		/// </summary>
-		[DataMember]
-		[Primitive]
-		[DisplayNameLoc(LocalizedStrings.Str135Key)]
-		[DescriptionLoc(LocalizedStrings.Str136Key)]
-		[MainCategory]
-		public string Comment { get; set; }
+	private bool? _isSystem;
 
-		/// <summary>
-		/// Order type.
-		/// </summary>
-		[DataMember]
-		[DisplayNameLoc(LocalizedStrings.Str132Key)]
-		[DescriptionLoc(LocalizedStrings.Str133Key)]
-		[MainCategory]
-		public OrderTypes? Type { get; set; }
-
-		private DateTimeOffset? _expiryDate;
-
-		/// <summary>
-		/// Order expiry time. The default is <see langword="null" />, which mean (GTC).
-		/// </summary>
-		/// <remarks>
-		/// If the value is <see cref="DateTimeOffset.MaxValue"/>, then the order is registered until cancel. Otherwise, the period is specified.
-		/// </remarks>
-		[DataMember]
-		[DisplayNameLoc(LocalizedStrings.Str141Key)]
-		[DescriptionLoc(LocalizedStrings.Str142Key)]
-		[MainCategory]
-		public DateTimeOffset? ExpiryDate
+	/// <summary>
+	/// Is a system trade.
+	/// </summary>
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.SystemKey,
+		Description = LocalizedStrings.IsSystemTradeKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public bool? IsSystem
+	{
+		get => _isSystem;
+		set
 		{
-			get { return _expiryDate; }
-			set
-			{
-				if (_expiryDate == value)
-					return;
+			if (_isSystem == value)
+				return;
 
-				_expiryDate = value;
-				NotifyChanged(nameof(ExpiryDate));
-			}
+			_isSystem = value;
+			NotifyChanged();
 		}
+	}
 
-		//[DataMember]
-		//[InnerSchema(IsNullable = true)]
-		/// <summary>
-		/// Order condition (e.g., stop- and algo- orders parameters).
-		/// </summary>
-		[Ignore]
-		[XmlIgnore]
-		[DisplayNameLoc(LocalizedStrings.Str154Key)]
-		[DescriptionLoc(LocalizedStrings.Str155Key)]
-		[CategoryLoc(LocalizedStrings.Str156Key)]
-		public OrderCondition Condition { get; set; }
+	/// <summary>
+	/// Placed order comment.
+	/// </summary>
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.CommentKey,
+		Description = LocalizedStrings.OrderCommentKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public string Comment { get; set; }
 
-		/// <summary>
-		/// Limit order time in force.
-		/// </summary>
-		[DisplayNameLoc(LocalizedStrings.TimeInForceKey)]
-		[DescriptionLoc(LocalizedStrings.Str232Key)]
-		[MainCategory]
-		[Nullable]
-		public TimeInForce? TimeInForce { get; set; }
+	/// <summary>
+	/// Order type.
+	/// </summary>
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.OrderTypeKey,
+		Description = LocalizedStrings.OrderTypeDescKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public OrderTypes? Type { get; set; }
 
-		private Order _derivedOrder;
+	private DateTimeOffset? _expiryDate;
 
-		/// <summary>
-		/// Exchange order that was created by the stop-order when the condition is activated (<see langword="null" /> if a stop condition has not been activated).
-		/// </summary>
-		[DataMember]
-		[InnerSchema]
-		[Ignore]
-		[DisplayNameLoc(LocalizedStrings.Str532Key)]
-		[DescriptionLoc(LocalizedStrings.Str533Key)]
-		[CategoryLoc(LocalizedStrings.Str156Key)]
-		public Order DerivedOrder
+	/// <summary>
+	/// Order expiry time. The default is <see langword="null" />, which mean (GTC).
+	/// </summary>
+	/// <remarks>
+	/// If the value is <see langword="null"/>, then the order is registered until cancel. Otherwise, the period is specified.
+	/// </remarks>
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.ExpirationKey,
+		Description = LocalizedStrings.OrderExpirationTimeKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public DateTimeOffset? ExpiryDate
+	{
+		get => _expiryDate;
+		set
 		{
-			get { return _derivedOrder; }
-			set
-			{
-				if (_derivedOrder == value)
-					return;
+			if (_expiryDate == value)
+				return;
 
-				_derivedOrder = value;
-				NotifyChanged(nameof(DerivedOrder));
-			}
+			_expiryDate = value;
+			NotifyChanged();
 		}
+	}
 
-		/// <summary>
-		/// Information for REPO\REPO-M orders.
-		/// </summary>
-		[Ignore]
-		[DisplayNameLoc(LocalizedStrings.Str233Key)]
-		[DescriptionLoc(LocalizedStrings.Str234Key)]
-		[MainCategory]
-		public RepoOrderInfo RepoInfo { get; set; }
+	/// <summary>
+	/// Order condition (e.g., stop- and algo- orders parameters).
+	/// </summary>
+	[XmlIgnore]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.ConditionKey,
+		Description = LocalizedStrings.OrderConditionDescKey,
+		GroupName = LocalizedStrings.ConditionalOrderKey)]
+	public OrderCondition Condition { get; set; }
 
-		/// <summary>
-		/// Information for Negotiate Deals Mode orders.
-		/// </summary>
-		[Ignore]
-		[DisplayNameLoc(LocalizedStrings.Str235Key)]
-		[DescriptionLoc(LocalizedStrings.Str236Key)]
-		[MainCategory]
-		public RpsOrderInfo RpsInfo { get; set; }
+	/// <summary>
+	/// Limit order time in force.
+	/// </summary>
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.TimeInForceKey,
+		Description = LocalizedStrings.LimitOrderTifKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public TimeInForce? TimeInForce { get; set; }
 
-		[field: NonSerialized]
-		private SynchronizedDictionary<object, object> _extensionInfo;
+	private Order _derivedOrder;
 
-		/// <summary>
-		/// Extended information on order.
-		/// </summary>
-		/// <remarks>
-		/// Required if additional information associated with the order is stored in the program. For example, the activation time, the yield for usual orders or the condition order ID for a stop order.
-		/// </remarks>
-		[Ignore]
-		[XmlIgnore]
-		[DisplayNameLoc(LocalizedStrings.ExtendedInfoKey)]
-		[DescriptionLoc(LocalizedStrings.Str427Key)]
-		[MainCategory]
-		public IDictionary<object, object> ExtensionInfo
+	/// <summary>
+	/// Exchange order that was created by the stop-order when the condition is activated (<see langword="null" /> if a stop condition has not been activated).
+	/// </summary>
+	//[DataMember]
+	[XmlIgnore]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.LinkedOrderKey,
+		Description = LocalizedStrings.LinkedOrderDescKey,
+		GroupName = LocalizedStrings.ConditionalOrderKey)]
+	[Obsolete("No longer used.")]
+	public Order DerivedOrder
+	{
+		get => _derivedOrder;
+		set
 		{
-			get { return _extensionInfo; }
-			set
-			{
-				_extensionInfo = value.Sync();
-				NotifyChanged(nameof(ExtensionInfo));
-			}
+			if (_derivedOrder == value)
+				return;
+
+			_derivedOrder = value;
+			NotifyChanged();
 		}
+	}
 
-		/// <summary>
-		/// Comission (broker, exchange etc.).
-		/// </summary>
-		[DataMember]
-		[Nullable]
-		[DisplayNameLoc(LocalizedStrings.Str159Key)]
-		[DescriptionLoc(LocalizedStrings.Str160Key)]
-		[MainCategory]
-		public decimal? Commission { get; set; }
+	/// <summary>
+	/// Commission (broker, exchange etc.).
+	/// </summary>
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.CommissionKey,
+		Description = LocalizedStrings.CommissionDescKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public decimal? Commission { get; set; }
 
-		//[field: NonSerialized]
-		//private IConnector _connector;
+	/// <summary>
+	/// Commission currency. Can be <see langword="null"/>.
+	/// </summary>
+	public string CommissionCurrency { get; set; }
 
-		///// <summary>
-		///// Connection to the trading system, through which this order has been registered.
-		///// </summary>
-		//[Ignore]
-		//[XmlIgnore]
-		//[Browsable(false)]
-		//[Obsolete("The property Connector was obsoleted and is always null.")]
-		//public IConnector Connector
-		//{
-		//	get { return _connector; }
-		//	set
-		//	{
-		//		if (_connector == value)
-		//			return;
+	/// <summary>
+	/// User's order ID.
+	/// </summary>
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.UserIdKey,
+		Description = LocalizedStrings.UserOrderIdKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public string UserOrderId { get; set; }
 
-		//		_connector = value;
+	/// <summary>
+	/// Strategy id.
+	/// </summary>
+	[DataMember]
+	public string StrategyId { get; set; }
 
-		//		NotifyChanged(nameof(Connector));
-		//	}
-		//}
+	/// <summary>
+	/// Broker firm code.
+	/// </summary>
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.BrokerKey,
+		Description = LocalizedStrings.BrokerCodeKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public string BrokerCode { get; set; }
 
-		/// <summary>
-		/// User's order ID.
-		/// </summary>
-		[DataMember]
-		[DisplayNameLoc(LocalizedStrings.Str165Key)]
-		[DescriptionLoc(LocalizedStrings.Str166Key)]
-		[MainCategory]
-		public string UserOrderId { get; set; }
+	/// <summary>
+	/// Client code assigned by the broker.
+	/// </summary>
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.ClientCodeKey,
+		Description = LocalizedStrings.ClientCodeDescKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public string ClientCode { get; set; }
 
-		/// <summary>
-		/// Broker firm code.
-		/// </summary>
-		[DataMember]
-		[MainCategory]
-		[DisplayNameLoc(LocalizedStrings.BrokerKey)]
-		[DescriptionLoc(LocalizedStrings.Str2619Key)]
-		public string BrokerCode { get; set; }
+	/// <summary>
+	/// Trading security currency.
+	/// </summary>
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.CurrencyKey,
+		Description = LocalizedStrings.CurrencyDescKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public CurrencyTypes? Currency { get; set; }
 
-		/// <summary>
-		/// Client code assigned by the broker.
-		/// </summary>
-		[DataMember]
-		[MainCategory]
-		[DisplayNameLoc(LocalizedStrings.ClientCodeKey)]
-		[DescriptionLoc(LocalizedStrings.ClientCodeDescKey)]
-		public string ClientCode { get; set; }
+	/// <summary>
+	/// Is the order of market-maker.
+	/// </summary>
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.MarketMakerKey,
+		Description = LocalizedStrings.MarketMakerOrderKey + LocalizedStrings.Dot,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public bool? IsMarketMaker { get; set; }
 
-		/// <summary>
-		/// Trading security currency.
-		/// </summary>
-		[DataMember]
-		[DisplayNameLoc(LocalizedStrings.CurrencyKey)]
-		[DescriptionLoc(LocalizedStrings.Str382Key)]
-		[MainCategory]
-		[Nullable]
-		public CurrencyTypes? Currency { get; set; }
+	/// <summary>
+	/// Margin mode.
+	/// </summary>
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.MarginKey,
+		Description = LocalizedStrings.MarginModeKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public MarginModes? MarginMode { get; set; }
 
-		/// <summary>
-		/// Returns a string that represents the current object.
-		/// </summary>
-		/// <returns>A string that represents the current object.</returns>
-		public override string ToString()
-		{
-			return LocalizedStrings.Str534Params
-				.Put(TransactionId, Id == null ? StringId : Id.To<string>(), Direction == Sides.Buy ? LocalizedStrings.Str403 : LocalizedStrings.Str404, Price, Volume, State, Balance);
-		}
+	/// <summary>
+	/// Slippage in trade price.
+	/// </summary>
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.SlippageKey,
+		Description = LocalizedStrings.SlippageTradeKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public decimal? Slippage { get; set; }
+
+	/// <summary>
+	/// Is order manual.
+	/// </summary>
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.ManualKey,
+		Description = LocalizedStrings.IsOrderManualKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public bool? IsManual { get; set; }
+
+	/// <summary>
+	/// Average execution price.
+	/// </summary>
+	[DataMember]
+	public decimal? AveragePrice { get; set; }
+
+	/// <summary>
+	/// Yield.
+	/// </summary>
+	[DataMember]
+	public decimal? Yield { get; set; }
+
+	/// <summary>
+	/// Minimum quantity of an order to be executed.
+	/// </summary>
+	[DataMember]
+	public decimal? MinVolume { get; set; }
+
+	/// <summary>
+	/// Position effect.
+	/// </summary>
+	[DataMember]
+	public OrderPositionEffects? PositionEffect { get; set; }
+
+	/// <summary>
+	/// Post-only order.
+	/// </summary>
+	[DataMember]
+	public bool? PostOnly { get; set; }
+
+	/// <summary>
+	/// Sequence number.
+	/// </summary>
+	/// <remarks>Zero means no information.</remarks>
+	[DataMember]
+	public long SeqNum { get; set; }
+
+	/// <summary>
+	/// Margin leverage.
+	/// </summary>
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.LeverageKey,
+		Description = LocalizedStrings.MarginLeverageKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public int? Leverage { get; set; }
+
+	OrderStates? IOrderMessage.State => State;
+	decimal? IOrderMessage.Balance => Balance;
+	decimal? IOrderMessage.Volume => Volume;
+
+	/// <inheritdoc />
+	public override string ToString()
+	{
+		var str = LocalizedStrings.OrderDetails
+			.Put(TransactionId, Id == null ? StringId : Id.To<string>(), Security?.Id, Portfolio?.Name, Side == Sides.Buy ? LocalizedStrings.Buy2 : LocalizedStrings.Sell2, Price, Volume, State, Balance, Type);
+
+		if (!UserOrderId.IsEmpty())
+			str += $" UID={UserOrderId}";
+
+		if (!StrategyId.IsEmpty())
+			str += $" Strategy={StrategyId}";
+
+		if (Condition != null)
+			str += $" Condition={Condition}";
+
+		if (AveragePrice != null)
+			str += $" AvgPrice={AveragePrice}";
+
+		if (MinVolume != null)
+			str += $" MinVolume={MinVolume}";
+
+		if (PositionEffect != null)
+			str += $" PosEffect={PositionEffect.Value}";
+
+		if (PostOnly != null)
+			str += $",PostOnly={PostOnly.Value}";
+
+		if (SeqNum != 0)
+			str += $",SeqNum={SeqNum}";
+
+		if (Leverage != null)
+			str += $",Leverage={Leverage.Value}";
+
+		return str;
 	}
 }

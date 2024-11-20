@@ -1,98 +1,85 @@
-#region S# License
-/******************************************************************************************
-NOTICE!!!  This program and source code is owned and licensed by
-StockSharp, LLC, www.stocksharp.com
-Viewing or use of this code requires your acceptance of the license
-agreement found at https://github.com/StockSharp/StockSharp/blob/master/LICENSE
-Removal of this comment is a violation of the license agreement.
+namespace StockSharp.Messages;
 
-Project: StockSharp.Messages.Messages
-File: OrderReplaceMessage.cs
-Created: 2015, 11, 11, 2:32 PM
-
-Copyright 2010 by StockSharp, LLC
-*******************************************************************************************/
-#endregion S# License
-namespace StockSharp.Messages
+/// <summary>
+/// The message containing the information for modify order.
+/// </summary>
+[DataContract]
+[Serializable]
+public class OrderReplaceMessage : OrderRegisterMessage
 {
-	using System;
-	using System.Runtime.Serialization;
+	/// <summary>
+	/// Modified order id.
+	/// </summary>
+	[DataMember]
+	public long? OldOrderId { get; set; }
 
 	/// <summary>
-	/// The message containing the information for modify order.
+	/// Modified order id (as a string if the electronic board does not use a numeric representation of the identifiers).
 	/// </summary>
-	[DataContract]
-	[Serializable]
-	public class OrderReplaceMessage : OrderRegisterMessage
+	[DataMember]
+	public string OldOrderStringId { get; set; }
+
+	/// <summary>
+	/// Replaced price.
+	/// </summary>
+	[DataMember]
+	public decimal? OldOrderPrice { get; set; }
+
+	/// <summary>
+	/// Replaced volume.
+	/// </summary>
+	[DataMember]
+	public decimal? OldOrderVolume { get; set; }
+
+	/// <summary>
+	/// Initializes a new instance of the <see cref="OrderReplaceMessage"/>.
+	/// </summary>
+	public OrderReplaceMessage()
+		: base(MessageTypes.OrderReplace)
 	{
-		/// <summary>
-		/// Modified order id.
-		/// </summary>
-		[DataMember]
-		public long? OldOrderId { get; set; }
+	}
 
-		/// <summary>
-		/// Modified order id (as a string if the electronic board does not use a numeric representation of the identifiers).
-		/// </summary>
-		[DataMember]
-		public string OldOrderStringId { get; set; }
+	/// <summary>
+	/// Create a copy of <see cref="OrderReplaceMessage"/>.
+	/// </summary>
+	/// <returns>Copy.</returns>
+	public override Message Clone()
+	{
+		var clone = new OrderReplaceMessage();
 
-		/// <summary>
-		/// Modified order transaction id.
-		/// </summary>
-		[DataMember]
-		public long OldTransactionId { get; set; }
+		CopyTo(clone);
 
-		/// <summary>
-		/// Initializes a new instance of the <see cref="OrderReplaceMessage"/>.
-		/// </summary>
-		public OrderReplaceMessage()
-			: base(MessageTypes.OrderReplace)
-		{
-		}
+		return clone;
+	}
 
-		/// <summary>
-		/// Create a copy of <see cref="OrderReplaceMessage"/>.
-		/// </summary>
-		/// <returns>Copy.</returns>
-		public override Message Clone()
-		{
-			var clone = new OrderReplaceMessage
-			{
-				Comment = Comment,
-				Condition = Condition,
-				TillDate = TillDate,
-				OrderType = OrderType,
-				PortfolioName = PortfolioName,
-				Price = Price,
-				RepoInfo = RepoInfo,
-				RpsInfo = RpsInfo,
-				SecurityId = SecurityId,
-				Side = Side,
-				TimeInForce = TimeInForce,
-				TransactionId = TransactionId,
-				VisibleVolume = VisibleVolume,
-				Volume = Volume,
-				OldOrderId = OldOrderId,
-				OldOrderStringId = OldOrderStringId,
-				OldTransactionId = OldTransactionId,
-				UserOrderId = UserOrderId,
-				ClientCode = ClientCode,
-				BrokerCode = BrokerCode,
-			};
+	/// <summary>
+	/// Copy the message into the <paramref name="destination" />.
+	/// </summary>
+	/// <param name="destination">The object, to which copied information.</param>
+	public void CopyTo(OrderReplaceMessage destination)
+	{
+		base.CopyTo(destination);
 
-			CopyTo(clone);
+		destination.OldOrderId = OldOrderId;
+		destination.OldOrderStringId = OldOrderStringId;
+		destination.OldOrderPrice = OldOrderPrice;
+		destination.OldOrderVolume = OldOrderVolume;
+	}
 
-			return clone;
-		}
+	/// <inheritdoc />
+	public override string ToString()
+	{
+		var str = base.ToString();
 
-		/// <summary>
-		/// Returns a string that represents the current object.
-		/// </summary>
-		/// <returns>A string that represents the current object.</returns>
-		public override string ToString()
-		{
-			return base.ToString() + $",OldTransId={OldTransactionId},OldOrdId={OldOrderId},NewTransId={TransactionId}";
-		}
+		if (OldOrderId != null || !OldOrderStringId.IsEmpty())
+			str += $"OldOrdId={OldOrderId}/{OldOrderStringId}";
+
+		if (OldOrderPrice != null)
+			str += $"OldOrderPrice={OldOrderPrice.Value}";
+
+		if (OldOrderVolume != null)
+			str += $"OldOrderVol={OldOrderVolume.Value}";
+
+		return str;
 	}
 }

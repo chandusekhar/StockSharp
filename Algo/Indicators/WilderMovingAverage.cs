@@ -1,67 +1,36 @@
-#region S# License
-/******************************************************************************************
-NOTICE!!!  This program and source code is owned and licensed by
-StockSharp, LLC, www.stocksharp.com
-Viewing or use of this code requires your acceptance of the license
-agreement found at https://github.com/StockSharp/StockSharp/blob/master/LICENSE
-Removal of this comment is a violation of the license agreement.
+﻿namespace StockSharp.Algo.Indicators;
 
-Project: StockSharp.Algo.Indicators.Algo
-File: WilderMovingAverage.cs
-Created: 2015, 11, 11, 2:32 PM
-
-Copyright 2010 by StockSharp, LLC
-*******************************************************************************************/
-#endregion S# License
-namespace StockSharp.Algo.Indicators
+/// <summary>
+/// Welles Wilder Moving Average.
+/// </summary>
+/// <remarks>
+/// https://doc.stocksharp.com/topics/api/indicators/list_of_indicators/wilder_ma.html
+/// </remarks>
+[Display(
+	ResourceType = typeof(LocalizedStrings),
+	Name = LocalizedStrings.WilderMAKey,
+	Description = LocalizedStrings.WilderMovingAverageKey)]
+[Doc("topics/api/indicators/list_of_indicators/wilder_ma.html")]
+public class WilderMovingAverage : LengthIndicator<decimal>
 {
-	using System.Collections.Generic;
-	using System.ComponentModel;
-	using System.Linq;
-	using Ecng.Collections;
-	using StockSharp.Localization;
-
 	/// <summary>
-	/// Welles Wilder Moving Average.
+	/// Initializes a new instance of the <see cref="WilderMovingAverage"/>.
 	/// </summary>
-	[DisplayName("WilderMA")]
-	[DescriptionLoc(LocalizedStrings.Str825Key)]
-	public class WilderMovingAverage : LengthIndicator<decimal>
+	public WilderMovingAverage()
 	{
-		/// <summary>
-		/// Initializes a new instance of the <see cref="WilderMovingAverage"/>.
-		/// </summary>
-		public WilderMovingAverage()
-		{
-			Length = 32;
-		}
+		Length = 32;
+	}
 
-		/// <summary>
-		/// To handle the input value.
-		/// </summary>
-		/// <param name="input">The input value.</param>
-		/// <returns>The resulting value.</returns>
-		protected override IIndicatorValue OnProcess(IIndicatorValue input)
-		{
-			var newValue = input.GetValue<decimal>();
+	/// <inheritdoc />
+	protected override IIndicatorValue OnProcess(IIndicatorValue input)
+	{
+		var newValue = input.ToDecimal();
 
-			if (input.IsFinal)
-			{
-				Buffer.Add(newValue);
+		if (input.IsFinal)
+			Buffer.PushBack(newValue);
 
-				if (Buffer.Count > Length)
-					Buffer.RemoveAt(0);
-			}
+		var buffCount = input.IsFinal ? Buffer.Count : ((Buffer.Count - 1).Max(0) + 1);
 
-			var buff = Buffer;
-			if (!input.IsFinal)
-			{
-				buff = new List<decimal>();
-				buff.AddRange(Buffer.Skip(1));
-				buff.Add(newValue);
-			}
-
-			return new DecimalIndicatorValue(this, (this.GetCurrentValue() * (buff.Count - 1) + newValue) / buff.Count);
-		}
+		return new DecimalIndicatorValue(this, (this.GetCurrentValue() * (buffCount - 1) + newValue) / buffCount, input.Time);
 	}
 }

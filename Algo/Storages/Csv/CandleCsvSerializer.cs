@@ -1,91 +1,182 @@
-#region S# License
-/******************************************************************************************
-NOTICE!!!  This program and source code is owned and licensed by
-StockSharp, LLC, www.stocksharp.com
-Viewing or use of this code requires your acceptance of the license
-agreement found at https://github.com/StockSharp/StockSharp/blob/master/LICENSE
-Removal of this comment is a violation of the license agreement.
+namespace StockSharp.Algo.Storages.Csv;
 
-Project: StockSharp.Algo.Storages.Csv.Algo
-File: CandleCsvSerializer.cs
-Created: 2015, 12, 14, 1:43 PM
-
-Copyright 2010 by StockSharp, LLC
-*******************************************************************************************/
-#endregion S# License
-namespace StockSharp.Algo.Storages.Csv
+/// <summary>
+/// The candle serializer in the CSV format.
+/// </summary>
+/// <typeparam name="TCandleMessage"><see cref="CandleMessage"/> derived type.</typeparam>
+public class CandleCsvSerializer<TCandleMessage> : CsvMarketDataSerializer<TCandleMessage>
+	where TCandleMessage : CandleMessage, new()
 {
-	using System;
-	using System.Text;
-
-	using Ecng.Common;
-
-	using StockSharp.Messages;
-
-	/// <summary>
-	/// The candle serializer in the CSV format.
-	/// </summary>
-	public class CandleCsvSerializer<TCandleMessage> : CsvMarketDataSerializer<TCandleMessage>
-		where TCandleMessage : CandleMessage, new()
+	private class CandleCsvMetaInfo : MetaInfo
+		//where TCandleMessage : CandleMessage, new()
 	{
-		/// <summary>
-		/// Initializes a new instance of the <see cref="CandleCsvSerializer{TCandleMessage}"/>.
-		/// </summary>
-		/// <param name="securityId">Security ID.</param>
-		/// <param name="arg">Candle arg.</param>
-		/// <param name="encoding">Encoding.</param>
-		public CandleCsvSerializer(SecurityId securityId, object arg, Encoding encoding = null)
-			: base(securityId, encoding)
-		{
-			if (arg == null)
-				throw new ArgumentNullException(nameof(arg));
+		private readonly Dictionary<DateTime, TCandleMessage> _items = [];
 
-			Arg = arg;
+		private readonly CandleCsvSerializer<TCandleMessage> _serializer;
+		private readonly Encoding _encoding;
+
+		private bool _isOverride;
+
+		public override bool IsOverride => _isOverride;
+
+		public CandleCsvMetaInfo(CandleCsvSerializer<TCandleMessage> serializer, DateTime date, Encoding encoding)
+			: base(date)
+		{
+			_serializer = serializer;
+			_encoding = encoding ?? throw new ArgumentNullException(nameof(encoding));
 		}
 
-		/// <summary>
-		/// Candle arg.
-		/// </summary>
-		public object Arg { get; set; }
+		public override object LastId { get; set; }
 
-		/// <summary>
-		/// Write data to the specified writer.
-		/// </summary>
-		/// <param name="writer">CSV writer.</param>
-		/// <param name="data">Data.</param>
-		protected override void Write(CsvFileWriter writer, TCandleMessage data)
+		public override void Write(Stream stream)
 		{
-			writer.WriteRow(new[]
+		}
+
+		public override void Read(Stream stream)
+		{
+			Do.Invariant(() =>
 			{
-				data.OpenTime.UtcDateTime.ToString(TimeFormat),
-				data.OpenTime.ToString("zzz"),
-				data.OpenPrice.ToString(),
-				data.HighPrice.ToString(),
-				data.LowPrice.ToString(),
-				data.ClosePrice.ToString(),
-				data.TotalVolume.ToString()
+				var count = 0;
+				var firstTimeRead = false;
+
+				var reader = new FastCsvReader(stream, _encoding, StringHelper.RN);
+
+				while (reader.NextLine())
+				{
+					var message = _serializer.Read(reader, this);
+
+					var openTime = message.OpenTime.UtcDateTime;
+
+					_items.Add(openTime, message);
+
+					if (!firstTimeRead)
+					{
+						FirstTime = openTime;
+						firstTimeRead = true;
+					}
+
+					LastTime = openTime;
+
+					count++;
+				}
+
+				Count = count;
+
+				stream.Position = 0;
 			});
 		}
 
-		/// <summary>
-		/// Read data from the specified reader.
-		/// </summary>
-		/// <param name="reader">CSV reader.</param>
-		/// <param name="date">Date.</param>
-		/// <returns>Data.</returns>
-		protected override TCandleMessage Read(FastCsvReader reader, DateTime date)
+		public IEnumerable<TCandleMessage> Process(IEnumerable<TCandleMessage> messages)
 		{
-			return new TCandleMessage
+			messages = messages.ToArray();
+
+			if (messages.IsEmpty())
+				return [];
+
+			foreach (var message in messages)
 			{
-				SecurityId = SecurityId,
-				Arg = Arg,
-				OpenTime = ReadTime(reader, date),
-				OpenPrice = reader.ReadDecimal(),
-				HighPrice = reader.ReadDecimal(),
-				LowPrice = reader.ReadDecimal(),
-				ClosePrice = reader.ReadDecimal(),
-				TotalVolume = reader.ReadDecimal(),
-			};
+				var openTime = message.OpenTime.UtcDateTime;
+
+				if (!_isOverride)
+					_isOverride = _items.ContainsKey(openTime) || openTime <= LastTime;
+
+				_items[openTime] = message;
+
+				LastTime = openTime;
+			}
+
+			return _isOverride ? _items.Values : messages;
 		}
+	}
+
+	private readonly DataType _dataType;
+
+	/// <summary>
+	/// Initializes a new instance of the <see cref="CandleCsvSerializer{TCandleMessage}"/>.
+	/// </summary>
+	/// <param name="securityId">Security ID.</param>
+	/// <param name="dataType"><see cref="DataType"/>.</param>
+	/// <param name="encoding">Encoding.</param>
+	public CandleCsvSerializer(SecurityId securityId, DataType dataType, Encoding encoding = null)
+		: base(securityId, encoding)
+	{
+		_dataType = dataType ?? throw new ArgumentNullException(nameof(dataType));
+	}
+
+	/// <inheritdoc />
+	public override IMarketDataMetaInfo CreateMetaInfo(DateTime date)
+	{
+		return new CandleCsvMetaInfo(this, date, Encoding);
+	}
+
+	/// <inheritdoc />
+	public override void Serialize(Stream stream, IEnumerable<TCandleMessage> data, IMarketDataMetaInfo metaInfo)
+	{
+		var candleMetaInfo = (CandleCsvMetaInfo)metaInfo;
+
+		var toWrite = candleMetaInfo.Process(data);
+
+		Do.Invariant(() =>
+		{
+			var writer = new CsvFileWriter(stream, Encoding);
+
+			try
+			{
+				foreach (var item in toWrite)
+				{
+					Write(writer, item, candleMetaInfo);
+				}
+			}
+			finally
+			{
+				writer.Writer.Flush();
+			}
+		});
+	}
+
+	/// <inheritdoc />
+	protected override void Write(CsvFileWriter writer, TCandleMessage data, IMarketDataMetaInfo metaInfo)
+	{
+		if (data.State == CandleStates.Active)
+			throw new ArgumentException(LocalizedStrings.CandleActiveNotSupport.Put(data), nameof(data));
+
+		writer.WriteRow(new[]
+		{
+			data.OpenTime.WriteTimeMls(),
+			data.OpenTime.ToString("zzz"),
+			data.OpenPrice.ToString(),
+			data.HighPrice.ToString(),
+			data.LowPrice.ToString(),
+			data.ClosePrice.ToString(),
+			data.TotalVolume.ToString()
+		}.Concat(data.BuildFrom.ToCsv()).Concat(
+		[
+			data.SeqNum.DefaultAsNull().ToString(),
+		]));
+	}
+
+	/// <inheritdoc />
+	protected override TCandleMessage Read(FastCsvReader reader, IMarketDataMetaInfo metaInfo)
+	{
+		var message = new TCandleMessage
+		{
+			SecurityId = SecurityId,
+			DataType = _dataType,
+			OpenTime = reader.ReadTime(metaInfo.Date),
+			OpenPrice = reader.ReadDecimal(),
+			HighPrice = reader.ReadDecimal(),
+			LowPrice = reader.ReadDecimal(),
+			ClosePrice = reader.ReadDecimal(),
+			TotalVolume = reader.ReadDecimal(),
+			State = CandleStates.Finished
+		};
+
+		if ((reader.ColumnCurr + 1) < reader.ColumnCount)
+			message.BuildFrom = reader.ReadBuildFrom();
+
+		if ((reader.ColumnCurr + 1) < reader.ColumnCount)
+			message.SeqNum = reader.ReadNullableLong() ?? 0L;
+
+		return message;
 	}
 }

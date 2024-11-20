@@ -1,122 +1,94 @@
-#region S# License
-/******************************************************************************************
-NOTICE!!!  This program and source code is owned and licensed by
-StockSharp, LLC, www.stocksharp.com
-Viewing or use of this code requires your acceptance of the license
-agreement found at https://github.com/StockSharp/StockSharp/blob/master/LICENSE
-Removal of this comment is a violation of the license agreement.
+﻿namespace StockSharp.Algo.Indicators;
 
-Project: StockSharp.Algo.Indicators.Algo
-File: Acceleration.cs
-Created: 2015, 11, 11, 2:32 PM
-
-Copyright 2010 by StockSharp, LLC
-*******************************************************************************************/
-#endregion S# License
-namespace StockSharp.Algo.Indicators
+/// <summary>
+/// Acceleration / Deceleration Indicator.
+/// </summary>
+/// <remarks>
+/// https://doc.stocksharp.com/topics/api/indicators/list_of_indicators/a_d.html
+/// </remarks>
+[Display(
+	ResourceType = typeof(LocalizedStrings),
+	Name = LocalizedStrings.ADKey,
+	Description = LocalizedStrings.AccDecIndicatorKey)]
+[Doc("topics/api/indicators/list_of_indicators/a_d.html")]
+public class Acceleration : BaseIndicator
 {
-	using System;
-	using System.ComponentModel;
+	/// <summary>
+	/// Initializes a new instance of the <see cref="Acceleration"/>.
+	/// </summary>
+	public Acceleration()
+		: this(new AwesomeOscillator(), new SimpleMovingAverage { Length = 5 })
+	{
+	}
 
-	using Ecng.Serialization;
-
-	using StockSharp.Localization;
+	/// <inheritdoc />
+	public override int NumValuesToInitialize => Math.Max(Ao.NumValuesToInitialize, Sma.NumValuesToInitialize);
 
 	/// <summary>
-	/// Acceleration / Decelration Indicator.
+	/// Initializes a new instance of the <see cref="Acceleration"/>.
 	/// </summary>
-	/// <remarks>
-	/// http://ta.mql4.com/indicators/bills/acceleration_deceleration.
-	/// </remarks>
-	[DisplayName("A/D")]
-	[DescriptionLoc(LocalizedStrings.Str835Key)]
-	public class Acceleration : BaseIndicator
+	/// <param name="ao">Awesome Oscillator.</param>
+	/// <param name="sma">The moving average.</param>
+	public Acceleration(AwesomeOscillator ao, SimpleMovingAverage sma)
 	{
-		/// <summary>
-		/// Initializes a new instance of the <see cref="Acceleration"/>.
-		/// </summary>
-		public Acceleration()
-			: this(new AwesomeOscillator(), new SimpleMovingAverage { Length = 5 })
-		{
-		}
+		Ao = ao ?? throw new ArgumentNullException(nameof(ao));
+		Sma = sma ?? throw new ArgumentNullException(nameof(sma));
+	}
 
-		/// <summary>
-		/// Initializes a new instance of the <see cref="Acceleration"/>.
-		/// </summary>
-		/// <param name="ao">Awesome Oscillator.</param>
-		/// <param name="sma">The moving average.</param>
-		public Acceleration(AwesomeOscillator ao, SimpleMovingAverage sma)
-		{
-			if (ao == null)
-				throw new ArgumentNullException(nameof(ao));
+	/// <inheritdoc />
+	public override IndicatorMeasures Measure => IndicatorMeasures.MinusOnePlusOne;
 
-			if (sma == null)
-				throw new ArgumentNullException(nameof(sma));
+	/// <summary>
+	/// The moving average.
+	/// </summary>
+	[TypeConverter(typeof(ExpandableObjectConverter))]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.MAKey,
+		Description = LocalizedStrings.MovingAverageKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public SimpleMovingAverage Sma { get; }
 
-			Ao = ao;
-			Sma = sma;
-		}
+	/// <summary>
+	/// Awesome Oscillator.
+	/// </summary>
+	[TypeConverter(typeof(ExpandableObjectConverter))]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.AOKey,
+		Description = LocalizedStrings.AwesomeOscillatorKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public AwesomeOscillator Ao { get; }
 
-		/// <summary>
-		/// The moving average.
-		/// </summary>
-		[TypeConverter(typeof(ExpandableObjectConverter))]
-		[DisplayName("MA")]
-		[DescriptionLoc(LocalizedStrings.Str731Key)]
-		[CategoryLoc(LocalizedStrings.GeneralKey)]
-		public SimpleMovingAverage Sma { get; }
+	/// <inheritdoc />
+	protected override bool CalcIsFormed() => Sma.IsFormed;
 
-		/// <summary>
-		/// Awesome Oscillator.
-		/// </summary>
-		[TypeConverter(typeof(ExpandableObjectConverter))]
-		[DisplayName("AO")]
-		[DescriptionLoc(LocalizedStrings.Str836Key)]
-		[CategoryLoc(LocalizedStrings.GeneralKey)]
-		public AwesomeOscillator Ao { get; }
+	/// <inheritdoc />
+	protected override IIndicatorValue OnProcess(IIndicatorValue input)
+	{
+		var aoValue = Ao.Process(input);
 
-		/// <summary>
-		/// Whether the indicator is set.
-		/// </summary>
-		public override bool IsFormed => Sma.IsFormed;
+		if (Ao.IsFormed)
+			return new DecimalIndicatorValue(this, aoValue.ToDecimal() - Sma.Process(aoValue).ToDecimal(), input.Time);
 
-		/// <summary>
-		/// To handle the input value.
-		/// </summary>
-		/// <param name="input">The input value.</param>
-		/// <returns>The resulting value.</returns>
-		protected override IIndicatorValue OnProcess(IIndicatorValue input)
-		{
-			var aoValue = Ao.Process(input);
+		return new DecimalIndicatorValue(this, aoValue.ToDecimal(), input.Time);
+	}
 
-			if (Ao.IsFormed)
-				return new DecimalIndicatorValue(this, aoValue.GetValue<decimal>() - Sma.Process(aoValue).GetValue<decimal>());
+	/// <inheritdoc />
+	public override void Load(SettingsStorage storage)
+	{
+		base.Load(storage);
 
-			return new DecimalIndicatorValue(this, aoValue.GetValue<decimal>());
-		}
+		Sma.LoadIfNotNull(storage, nameof(Sma));
+		Ao.LoadIfNotNull(storage, nameof(Ao));
+	}
 
-		/// <summary>
-		/// Load settings.
-		/// </summary>
-		/// <param name="settings">Settings storage.</param>
-		public override void Load(SettingsStorage settings)
-		{
-			base.Load(settings);
+	/// <inheritdoc />
+	public override void Save(SettingsStorage storage)
+	{
+		base.Save(storage);
 
-			Sma.LoadNotNull(settings, "Sma");
-			Ao.LoadNotNull(settings, "Ao");
-		}
-
-		/// <summary>
-		/// Save settings.
-		/// </summary>
-		/// <param name="settings">Settings storage.</param>
-		public override void Save(SettingsStorage settings)
-		{
-			base.Save(settings);
-
-			settings.SetValue("Sma", Sma.Save());
-			settings.SetValue("Ao", Ao.Save());
-		}
+		storage.SetValue(nameof(Sma), Sma.Save());
+		storage.SetValue(nameof(Ao), Ao.Save());
 	}
 }

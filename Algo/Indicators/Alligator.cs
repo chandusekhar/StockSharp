@@ -1,86 +1,76 @@
-#region S# License
-/******************************************************************************************
-NOTICE!!!  This program and source code is owned and licensed by
-StockSharp, LLC, www.stocksharp.com
-Viewing or use of this code requires your acceptance of the license
-agreement found at https://github.com/StockSharp/StockSharp/blob/master/LICENSE
-Removal of this comment is a violation of the license agreement.
+﻿namespace StockSharp.Algo.Indicators;
 
-Project: StockSharp.Algo.Indicators.Algo
-File: Alligator.cs
-Created: 2015, 11, 11, 2:32 PM
-
-Copyright 2010 by StockSharp, LLC
-*******************************************************************************************/
-#endregion S# License
-namespace StockSharp.Algo.Indicators
+/// <summary>
+/// Alligator.
+/// </summary>
+/// <remarks>
+/// https://doc.stocksharp.com/topics/api/indicators/list_of_indicators/alligator.html
+/// </remarks>
+[Display(
+	ResourceType = typeof(LocalizedStrings),
+	Name = LocalizedStrings.AlligatorKey,
+	Description = LocalizedStrings.AlligatorKey)]
+[Doc("topics/api/indicators/list_of_indicators/alligator.html")]
+public class Alligator : BaseComplexIndicator
 {
-	using System.ComponentModel;
-
-	using StockSharp.Localization;
+	/// <summary>
+	/// Initializes a new instance of the <see cref="Alligator"/>.
+	/// </summary>
+	public Alligator()
+		: this(new() { Name = nameof(Jaw), Length = 13, Shift = 8 }, new() { Name = nameof(Teeth), Length = 8, Shift = 5 }, new() { Name = nameof(Lips), Length = 5, Shift = 3 })
+	{
+	}
 
 	/// <summary>
-	/// Alligator.
+	/// Initializes a new instance of the <see cref="Alligator"/>.
 	/// </summary>
-	/// <remarks>
-	/// http://ta.mql4.com/indicators/bills/alligator.
-	/// </remarks>
-	[DisplayNameLoc(LocalizedStrings.Str837Key)]
-	[DescriptionLoc(LocalizedStrings.Str837Key, true)]
-	public class Alligator : BaseComplexIndicator
+	/// <param name="jaw">Jaw.</param>
+	/// <param name="teeth">Teeth.</param>
+	/// <param name="lips">Lips.</param>
+	public Alligator(AlligatorLine jaw, AlligatorLine teeth, AlligatorLine lips)
+		: base(jaw, teeth, lips)
 	{
-		/// <summary>
-		/// Initializes a new instance of the <see cref="Alligator"/>.
-		/// </summary>
-		public Alligator()
-			: this(new AlligatorLine { Length = 13, Shift = 8 }, new AlligatorLine { Length = 8, Shift = 5 }, new AlligatorLine { Length = 5, Shift = 3 })
-		{
-		}
-
-		/// <summary>
-		/// Initializes a new instance of the <see cref="Alligator"/>.
-		/// </summary>
-		/// <param name="jaw">Jaw.</param>
-		/// <param name="teeth">Teeth.</param>
-		/// <param name="lips">Lips.</param>
-		public Alligator(AlligatorLine jaw, AlligatorLine teeth, AlligatorLine lips)
-			: base(jaw, teeth, lips)
-		{
-			Jaw = jaw;
-			Teeth = teeth;
-			Lips = lips;
-		}
-
-		/// <summary>
-		/// Jaw.
-		/// </summary>
-		[TypeConverter(typeof(ExpandableObjectConverter))]
-		[DisplayNameLoc(LocalizedStrings.Str838Key)]
-		[DescriptionLoc(LocalizedStrings.Str838Key, true)]
-		[CategoryLoc(LocalizedStrings.GeneralKey)]
-		public AlligatorLine Jaw { get; }
-
-		/// <summary>
-		/// Teeth.
-		/// </summary>
-		[TypeConverter(typeof(ExpandableObjectConverter))]
-		[DisplayNameLoc(LocalizedStrings.Str839Key)]
-		[DescriptionLoc(LocalizedStrings.Str839Key, true)]
-		[CategoryLoc(LocalizedStrings.GeneralKey)]
-		public AlligatorLine Teeth { get; private set; }
-
-		/// <summary>
-		/// Lips.
-		/// </summary>
-		[TypeConverter(typeof(ExpandableObjectConverter))]
-		[DisplayNameLoc(LocalizedStrings.Str840Key)]
-		[DescriptionLoc(LocalizedStrings.Str840Key, true)]
-		[CategoryLoc(LocalizedStrings.GeneralKey)]
-		public AlligatorLine Lips { get; private set; }
-
-		/// <summary>
-		/// Whether the indicator is set.
-		/// </summary>
-		public override bool IsFormed => Jaw.IsFormed;
+		Jaw = jaw;
+		Teeth = teeth;
+		Lips = lips;
 	}
+
+	/// <summary>
+	/// Jaw.
+	/// </summary>
+	[TypeConverter(typeof(ExpandableObjectConverter))]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.JawKey,
+		Description = LocalizedStrings.JawKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public AlligatorLine Jaw { get; }
+
+	/// <summary>
+	/// Teeth.
+	/// </summary>
+	[TypeConverter(typeof(ExpandableObjectConverter))]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.TeethKey,
+		Description = LocalizedStrings.TeethKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public AlligatorLine Teeth { get; }
+
+	/// <summary>
+	/// Lips.
+	/// </summary>
+	[TypeConverter(typeof(ExpandableObjectConverter))]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.LipsKey,
+		Description = LocalizedStrings.LipsKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public AlligatorLine Lips { get; }
+
+	/// <inheritdoc />
+	protected override bool CalcIsFormed() => Jaw.IsFormed;
+
+	/// <inheritdoc />
+	public override string ToString() => base.ToString() + $" J={Jaw.Length} T={Teeth.Length} L={Lips.Length}";
 }

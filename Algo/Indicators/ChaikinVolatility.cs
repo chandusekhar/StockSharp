@@ -1,109 +1,92 @@
-#region S# License
-/******************************************************************************************
-NOTICE!!!  This program and source code is owned and licensed by
-StockSharp, LLC, www.stocksharp.com
-Viewing or use of this code requires your acceptance of the license
-agreement found at https://github.com/StockSharp/StockSharp/blob/master/LICENSE
-Removal of this comment is a violation of the license agreement.
+﻿namespace StockSharp.Algo.Indicators;
 
-Project: StockSharp.Algo.Indicators.Algo
-File: ChaikinVolatility.cs
-Created: 2015, 11, 11, 2:32 PM
+using StockSharp.Algo.Candles;
 
-Copyright 2010 by StockSharp, LLC
-*******************************************************************************************/
-#endregion S# License
-namespace StockSharp.Algo.Indicators
+/// <summary>
+/// Chaikin volatility.
+/// </summary>
+/// <remarks>
+/// https://doc.stocksharp.com/topics/api/indicators/list_of_indicators/chv.html
+/// </remarks>
+[Display(
+	ResourceType = typeof(LocalizedStrings),
+	Name = LocalizedStrings.ChaikinVolatilityKey,
+	Description = LocalizedStrings.ChaikinVolatilityIndicatorKey)]
+[IndicatorIn(typeof(CandleIndicatorValue))]
+[Doc("topics/api/indicators/list_of_indicators/chv.html")]
+public class ChaikinVolatility : BaseIndicator
 {
-	using System.ComponentModel;
+	/// <summary>
+	/// Initializes a new instance of the <see cref="ChaikinVolatility"/>.
+	/// </summary>
+	public ChaikinVolatility()
+	{
+		Ema = new ExponentialMovingAverage();
+		Roc = new RateOfChange();
+	}
 
-	using Ecng.Serialization;
+	/// <inheritdoc />
+	public override int NumValuesToInitialize => Math.Max(Ema.NumValuesToInitialize, Roc.NumValuesToInitialize);
 
-	using StockSharp.Algo.Candles;
-	using StockSharp.Localization;
+	/// <inheritdoc />
+	public override IndicatorMeasures Measure => IndicatorMeasures.Percent;
 
 	/// <summary>
-	/// Chaikin volatility.
+	/// Moving Average.
 	/// </summary>
-	/// <remarks>
-	/// http://www2.wealth-lab.com/WL5Wiki/Volatility.ashx http://www.incrediblecharts.com/indicators/chaikin_volatility.php.
-	/// </remarks>
-	[DisplayName("Chaikin's Volatility")]
-	[DescriptionLoc(LocalizedStrings.Str730Key)]
-	public class ChaikinVolatility : BaseIndicator
+	[TypeConverter(typeof(ExpandableObjectConverter))]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.MAKey,
+		Description = LocalizedStrings.MovingAverageKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public ExponentialMovingAverage Ema { get; }
+
+	/// <summary>
+	/// Rate of change.
+	/// </summary>
+	[TypeConverter(typeof(ExpandableObjectConverter))]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.ROCKey,
+		Description = LocalizedStrings.RateOfChangeKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public RateOfChange Roc { get; }
+
+	/// <inheritdoc />
+	protected override bool CalcIsFormed() => Roc.IsFormed;
+
+	/// <inheritdoc />
+	protected override IIndicatorValue OnProcess(IIndicatorValue input)
 	{
-		/// <summary>
-		/// Initializes a new instance of the <see cref="ChaikinVolatility"/>.
-		/// </summary>
-		public ChaikinVolatility()
+		var candle = input.ToCandle();
+
+		var emaValue = Ema.Process(input, candle.GetLength());
+
+		if (Ema.IsFormed)
 		{
-			Ema = new ExponentialMovingAverage();
-			Roc = new RateOfChange();
+			var val = Roc.Process(emaValue);
+			return new DecimalIndicatorValue(this, val.ToDecimal(), input.Time);
 		}
 
-		/// <summary>
-		/// Moving Average.
-		/// </summary>
-		[TypeConverter(typeof(ExpandableObjectConverter))]
-		[DisplayName("MA")]
-		[DescriptionLoc(LocalizedStrings.Str731Key)]
-		[CategoryLoc(LocalizedStrings.GeneralKey)]
-		public ExponentialMovingAverage Ema { get; }
+		return new DecimalIndicatorValue(this, input.Time);
+	}
 
-		/// <summary>
-		/// Rate of change.
-		/// </summary>
-		[TypeConverter(typeof(ExpandableObjectConverter))]
-		[DisplayName("ROC")]
-		[DescriptionLoc(LocalizedStrings.Str732Key)]
-		[CategoryLoc(LocalizedStrings.GeneralKey)]
-		public RateOfChange Roc { get; }
+	/// <inheritdoc />
+	public override void Load(SettingsStorage storage)
+	{
+		base.Load(storage);
 
-		/// <summary>
-		/// Whether the indicator is set.
-		/// </summary>
-		public override bool IsFormed => Roc.IsFormed;
+		Ema.LoadIfNotNull(storage, nameof(Ema));
+		Roc.LoadIfNotNull(storage, nameof(Roc));
+	}
 
-		/// <summary>
-		/// To handle the input value.
-		/// </summary>
-		/// <param name="input">The input value.</param>
-		/// <returns>The resulting value.</returns>
-		protected override IIndicatorValue OnProcess(IIndicatorValue input)
-		{
-			var candle = input.GetValue<Candle>();
-			var emaValue = Ema.Process(input.SetValue(this, candle.HighPrice - candle.LowPrice));
+	/// <inheritdoc />
+	public override void Save(SettingsStorage storage)
+	{
+		base.Save(storage);
 
-			if (Ema.IsFormed)
-			{
-				return Roc.Process(emaValue);
-			}
-
-			return input;				
-		}
-
-		/// <summary>
-		/// Load settings.
-		/// </summary>
-		/// <param name="settings">Settings storage.</param>
-		public override void Load(SettingsStorage settings)
-		{
-			base.Load(settings);
-
-			Ema.LoadNotNull(settings, "Ema");
-			Roc.LoadNotNull(settings, "Roc");
-		}
-
-		/// <summary>
-		/// Save settings.
-		/// </summary>
-		/// <param name="settings">Settings storage.</param>
-		public override void Save(SettingsStorage settings)
-		{
-			base.Save(settings);
-
-			settings.SetValue("Ema", Ema.Save());
-			settings.SetValue("Roc", Roc.Save());
-		}
+		storage.SetValue(nameof(Ema), Ema.Save());
+		storage.SetValue(nameof(Roc), Roc.Save());
 	}
 }

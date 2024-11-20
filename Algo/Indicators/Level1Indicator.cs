@@ -1,76 +1,50 @@
-#region S# License
-/******************************************************************************************
-NOTICE!!!  This program and source code is owned and licensed by
-StockSharp, LLC, www.stocksharp.com
-Viewing or use of this code requires your acceptance of the license
-agreement found at https://github.com/StockSharp/StockSharp/blob/master/LICENSE
-Removal of this comment is a violation of the license agreement.
+namespace StockSharp.Algo.Indicators;
 
-Project: StockSharp.Algo.Indicators.Algo
-File: Level1Indicator.cs
-Created: 2015, 11, 11, 2:32 PM
-
-Copyright 2010 by StockSharp, LLC
-*******************************************************************************************/
-#endregion S# License
-namespace StockSharp.Algo.Indicators
+/// <summary>
+/// The indicator, built on the market data basis.
+/// </summary>
+[Display(
+	ResourceType = typeof(LocalizedStrings),
+	Name = LocalizedStrings.Level1Key,
+	Description = LocalizedStrings.Level1IndicatorKey)]
+[IndicatorIn(typeof(SingleIndicatorValue<Level1ChangeMessage>))]
+[IndicatorHidden]
+public class Level1Indicator : BaseIndicator
 {
-	using Ecng.Collections;
-	using Ecng.Serialization;
-
-	using StockSharp.Messages;
-	using StockSharp.Localization;
-
 	/// <summary>
-	/// The indicator, built on the market data basis.
+	/// Level one market-data field, which is used as an indicator value.
 	/// </summary>
-	[DisplayNameLoc(LocalizedStrings.SecurityKey)]
-	[DescriptionLoc(LocalizedStrings.Str747Key)]
-	public class Level1Indicator : BaseIndicator
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.FieldKey,
+		Description = LocalizedStrings.Level1FieldKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public Level1Fields Field { get; set; } = Level1Fields.ClosePrice;
+
+	/// <inheritdoc />
+	protected override IIndicatorValue OnProcess(IIndicatorValue input)
 	{
-		/// <summary>
-		/// Level one market-data field, which is used as an indicator value.
-		/// </summary>
-		[DisplayNameLoc(LocalizedStrings.Str748Key)]
-		[DescriptionLoc(LocalizedStrings.Str749Key)]
-		[CategoryLoc(LocalizedStrings.GeneralKey)]
-		public Level1Fields Field { get; set; }
+		var value = input.GetValue<decimal?>(Field);
 
-		/// <summary>
-		/// To handle the input value.
-		/// </summary>
-		/// <param name="input">The input value.</param>
-		/// <returns>The resulting value.</returns>
-		protected override IIndicatorValue OnProcess(IIndicatorValue input)
-		{
-			var message = input.GetValue<Level1ChangeMessage>();
+		if (!IsFormed && value != null && input.IsFinal)
+			IsFormed = true;
 
-			var retVal = message.Changes.TryGetValue(Field);
+		return value is decimal d
+			? new DecimalIndicatorValue(this, d, input.Time)
+			: new DecimalIndicatorValue(this, input.Time);
+	}
 
-			if (!IsFormed && retVal != null && input.IsFinal)
-				IsFormed = true;
+	/// <inheritdoc />
+	public override void Load(SettingsStorage storage)
+	{
+		base.Load(storage);
+		Field = storage.GetValue<Level1Fields>(nameof(Field));
+	}
 
-			return retVal == null ? new DecimalIndicatorValue(this) : new DecimalIndicatorValue(this, (decimal)retVal);
-		}
-
-		/// <summary>
-		/// Load settings.
-		/// </summary>
-		/// <param name="settings">Settings storage.</param>
-		public override void Load(SettingsStorage settings)
-		{
-			base.Load(settings);
-			Field = settings.GetValue<Level1Fields>(nameof(Field));
-		}
-
-		/// <summary>
-		/// Save settings.
-		/// </summary>
-		/// <param name="settings">Settings storage.</param>
-		public override void Save(SettingsStorage settings)
-		{
-			base.Save(settings);
-			settings.SetValue(nameof(Field), Field);
-		}
+	/// <inheritdoc />
+	public override void Save(SettingsStorage storage)
+	{
+		base.Save(storage);
+		storage.SetValue(nameof(Field), Field);
 	}
 }

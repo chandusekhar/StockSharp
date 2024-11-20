@@ -1,32 +1,17 @@
-#region S# License
-/******************************************************************************************
-NOTICE!!!  This program and source code is owned and licensed by
-StockSharp, LLC, www.stocksharp.com
-Viewing or use of this code requires your acceptance of the license
-agreement found at https://github.com/StockSharp/StockSharp/blob/master/LICENSE
-Removal of this comment is a violation of the license agreement.
+﻿namespace StockSharp.Algo.Indicators;
 
-Project: StockSharp.Algo.Indicators.Algo
-File: NickRypockTrailingReverse.cs
-Created: 2015, 11, 11, 2:32 PM
-
-Copyright 2010 by StockSharp, LLC
-*******************************************************************************************/
-#endregion S# License
-namespace StockSharp.Algo.Indicators
+/// <summary>
+/// NickRypockTrailingReverse (Nick Rypock Trailing reverse).
+/// </summary>
+/// <remarks>
+/// https://doc.stocksharp.com/topics/api/indicators/list_of_indicators/nrtr.html
+/// </remarks>
+[DisplayName("NRTR")]
+[Description("Nick Rypock Trailing reverse.")]
+[Doc("topics/api/indicators/list_of_indicators/nrtr.html")]
+public class NickRypockTrailingReverse : LengthIndicator<decimal>
 {
-	using System.ComponentModel;
-
-	using Ecng.Serialization;
-
-	using StockSharp.Localization;
-
-	/// <summary>
-	/// NickRypockTrailingReverse (Nick Rypock Trailing reverse).
-	/// </summary>
-	[DisplayName("NRTR")]
-	[Description("Nick Rypock Trailing reverse.")]
-	public class NickRypockTrailingReverse : LengthIndicator<decimal>
+	private class CalcBuffer
 	{
 		private bool _isInitialized;
 
@@ -42,80 +27,22 @@ namespace StockSharp.Algo.Indicators
 		/// </summary>
 		private int _trend;
 
-		private decimal _multiple;
+		public CalcBuffer Clone() => (CalcBuffer)MemberwiseClone();
 
-		/// <summary>
-		/// Multiplication factor.
-		/// </summary>
-		[DisplayNameLoc(LocalizedStrings.Str806Key)]
-		[DescriptionLoc(LocalizedStrings.Str807Key)]
-		[CategoryLoc(LocalizedStrings.GeneralKey)]
-		public decimal Multiple
-		{
-			get { return _multiple * 1000; }
-			set
-			{
-				decimal tmpValue = value;
-
-				if (tmpValue <= 1)
-					tmpValue = 1;
-
-				_multiple = tmpValue / 1000;
-
-				Reset();
-			}
-		}
-
-		//private int _roundDigits;
-
-		///// <summary>
-		///// Округление до знака после запятой.
-		///// </summary>
-		//[DisplayName("Округление после запятой")]
-		//[Description("Округление до знака после запятой.")]
-		//[Category("Основное")]
-		//public int RoundDigits
-		//{
-		//	get { return _roundDigits; }
-		//	set
-		//	{
-		//		_roundDigits = value;
-
-		//		if (_roundDigits < 0)
-		//			_roundDigits = 0;
-
-		//		Reset();
-		//	}
-		//}
-
-		/// <summary>
-		/// Initializes a new instance of the <see cref="NickRypockTrailingReverse"/>.
-		/// </summary>
-		public NickRypockTrailingReverse()
-		{
-			Multiple = 100;
-			Length = 50;
-		}
-
-		/// <summary>
-		/// To handle the input value.
-		/// </summary>
-		/// <param name="input">The input value.</param>
-		/// <returns>The resulting value.</returns>
-		protected override IIndicatorValue OnProcess(IIndicatorValue input)
+		public decimal Calculate(NickRypockTrailingReverse ind, IIndicatorValue input)
 		{
 			if (_isInitialized == false)
 			{
-				_k = input.GetValue<decimal>();
-				_highPrice = input.GetValue<decimal>();
-				_lowPrice = input.GetValue<decimal>();
+				_k = input.ToDecimal();
+				_highPrice = input.ToDecimal();
+				_lowPrice = input.ToDecimal();
 
 				_isInitialized = true;
 			}
 
-			_price = input.GetValue<decimal>();
+			_price = input.ToDecimal();
 
-			_k = (_k + (_price - _k) / Length) * _multiple;
+			_k = (_k + (_price - _k) / ind.Length) * ind._multiple;
 
 			_newTrend = 0;
 
@@ -160,25 +87,10 @@ namespace StockSharp.Algo.Indicators
 			if (_newTrend != 0)
 				_trend = _newTrend;
 
-			var newValue = _reverse;
-
-			// если буффер стал достаточно большим (стал больше длины)
-			if (IsFormed)
-			{
-				// удаляем хвостовое значение
-				Buffer.RemoveAt(0);
-			}
-
-			Buffer.Add(newValue);
-
-			// значение NickRypockTrailingReverse
-			return new DecimalIndicatorValue(this, newValue);
+			return _reverse;
 		}
 
-		/// <summary>
-		/// To reset the indicator status to initial. The method is called each time when initial settings are changed (for example, the length of period).
-		/// </summary>
-		public override void Reset()
+		public void Reset()
 		{
 			_isInitialized = false;
 
@@ -190,27 +102,81 @@ namespace StockSharp.Algo.Indicators
 			_trend = 0;
 			_newTrend = 0;
 		}
+	}
 
-		/// <summary>
-		/// Load settings.
-		/// </summary>
-		/// <param name="settings">Settings storage.</param>
-		public override void Load(SettingsStorage settings)
+	private readonly CalcBuffer _buf = new();
+
+	private decimal _multiple;
+
+	/// <summary>
+	/// Multiplication factor.
+	/// </summary>
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.MultiplicationFactorKey,
+		Description = LocalizedStrings.MultiplicationFactorDescKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public decimal Multiple
+	{
+		get => _multiple * 1000;
+		set
 		{
-			base.Load(settings);
+			var tmpValue = value;
 
-			Multiple = settings.GetValue<decimal>(nameof(Multiple));
+			if (tmpValue <= 1)
+				tmpValue = 1;
+
+			_multiple = tmpValue / 1000;
+
+			Reset();
+		}
+	}
+
+	/// <summary>
+	/// Initializes a new instance of the <see cref="NickRypockTrailingReverse"/>.
+	/// </summary>
+	public NickRypockTrailingReverse()
+	{
+		Multiple = 100;
+		Length = 50;
+	}
+
+	/// <inheritdoc />
+	protected override IIndicatorValue OnProcess(IIndicatorValue input)
+	{
+		var b = input.IsFinal ? _buf : _buf.Clone();
+
+		var newValue = b.Calculate(this, input);
+
+		if (input.IsFinal)
+		{
+			Buffer.PushBack(newValue);
 		}
 
-		/// <summary>
-		/// Save settings.
-		/// </summary>
-		/// <param name="settings">Settings storage.</param>
-		public override void Save(SettingsStorage settings)
-		{
-			base.Save(settings);
+		// значение NickRypockTrailingReverse
+		return new DecimalIndicatorValue(this, newValue, input.Time);
+	}
 
-			settings.SetValue(nameof(Multiple), Multiple);
-		}
+	/// <inheritdoc />
+	public override void Reset()
+	{
+		base.Reset();
+		_buf.Reset();
+	}
+
+	/// <inheritdoc />
+	public override void Load(SettingsStorage storage)
+	{
+		base.Load(storage);
+
+		Multiple = storage.GetValue<decimal>(nameof(Multiple));
+	}
+
+	/// <inheritdoc />
+	public override void Save(SettingsStorage storage)
+	{
+		base.Save(storage);
+
+		storage.SetValue(nameof(Multiple), Multiple);
 	}
 }

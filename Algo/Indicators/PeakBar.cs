@@ -1,127 +1,102 @@
-#region S# License
-/******************************************************************************************
-NOTICE!!!  This program and source code is owned and licensed by
-StockSharp, LLC, www.stocksharp.com
-Viewing or use of this code requires your acceptance of the license
-agreement found at https://github.com/StockSharp/StockSharp/blob/master/LICENSE
-Removal of this comment is a violation of the license agreement.
+﻿namespace StockSharp.Algo.Indicators;
 
-Project: StockSharp.Algo.Indicators.Algo
-File: PeakBar.cs
-Created: 2015, 11, 11, 2:32 PM
-
-Copyright 2010 by StockSharp, LLC
-*******************************************************************************************/
-#endregion S# License
-namespace StockSharp.Algo.Indicators
+/// <summary>
+/// PeakBar.
+/// </summary>
+/// <remarks>
+/// https://doc.stocksharp.com/topics/api/indicators/list_of_indicators/peakbar.html
+/// </remarks>
+[Display(
+	ResourceType = typeof(LocalizedStrings),
+	Name = LocalizedStrings.PeakBarKey,
+	Description = LocalizedStrings.PeakBarKey)]
+[IndicatorIn(typeof(CandleIndicatorValue))]
+[Doc("topics/api/indicators/list_of_indicators/peakbar.html")]
+public class PeakBar : BaseIndicator
 {
-	using System;
-	using System.ComponentModel;
+	private decimal _currentMaximum = decimal.MinValue;
 
-	using Ecng.Serialization;
+	private int _currentBarCount;
 
-	using StockSharp.Algo.Candles;
-	using StockSharp.Localization;
-	using StockSharp.Messages;
+	private int _valueBarCount;
 
 	/// <summary>
-	/// PeakBar.
+	/// Initializes a new instance of the <see cref="PeakBar"/>.
 	/// </summary>
-	/// <remarks>
-	/// http://www2.wealth-lab.com/WL5Wiki/PeakBar.ashx.
-	/// </remarks>
-	[DisplayName("PeakBar")]
-	[DescriptionLoc(LocalizedStrings.Str817Key)]
-	public class PeakBar : BaseIndicator
+	public PeakBar()
 	{
-		private decimal _currentMaximum = decimal.MinValue;
+	}
 
-		private int _currentBarCount;
+	private Unit _reversalAmount = new();
 
-		private int _valueBarCount;
-
-		/// <summary>
-		/// Initializes a new instance of the <see cref="PeakBar"/>.
-		/// </summary>
-		public PeakBar()
+	/// <summary>
+	/// Indicator changes threshold.
+	/// </summary>
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.ThresholdKey,
+		Description = LocalizedStrings.ThresholdDescKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public Unit ReversalAmount
+	{
+		get => _reversalAmount;
+		set
 		{
+			_reversalAmount = value ?? throw new ArgumentNullException(nameof(value));
+
+			Reset();
 		}
+	}
 
-		private Unit _reversalAmount = new Unit();
+	/// <inheritdoc />
+	protected override IIndicatorValue OnProcess(IIndicatorValue input)
+	{
+		var candle = input.ToCandle();
 
-		/// <summary>
-		/// Indicator changes threshold.
-		/// </summary>
-		[DisplayNameLoc(LocalizedStrings.Str783Key)]
-		[DescriptionLoc(LocalizedStrings.Str784Key)]
-		[CategoryLoc(LocalizedStrings.GeneralKey)]
-		public Unit ReversalAmount
+		var cm = _currentMaximum;
+		var vbc = _valueBarCount;
+
+		try
 		{
-			get { return _reversalAmount; }
-			set
+			if (candle.HighPrice > cm)
 			{
-				if (value == null)
-					throw new ArgumentNullException(nameof(value));
-
-				_reversalAmount = value;
-
-				Reset();
+				cm = candle.HighPrice;
+				vbc = _currentBarCount;
 			}
-		}
-
-		/// <summary>
-		/// To handle the input value.
-		/// </summary>
-		/// <param name="input">The input value.</param>
-		/// <returns>The resulting value.</returns>
-		protected override IIndicatorValue OnProcess(IIndicatorValue input)
-		{
-			var candle = input.GetValue<Candle>();
-
-			try
-			{
-				if (candle.HighPrice > _currentMaximum)
-				{
-					_currentMaximum = candle.HighPrice;
-					_valueBarCount = _currentBarCount;
-				}
-				else if (candle.LowPrice <= _currentMaximum - ReversalAmount)
-				{
-					if (input.IsFinal)
-						IsFormed = true;
-
-					return new DecimalIndicatorValue(this, _valueBarCount);
-				}
-
-				return new DecimalIndicatorValue(this, this.GetCurrentValue());
-			}
-			finally
+			else if (candle.LowPrice <= (cm - ReversalAmount))
 			{
 				if (input.IsFinal)
-					_currentBarCount++;
+					IsFormed = true;
+
+				return new DecimalIndicatorValue(this, vbc, input.Time);
+			}
+
+			return new DecimalIndicatorValue(this, this.GetCurrentValue(), input.Time);
+		}
+		finally
+		{
+			if (input.IsFinal)
+			{
+				_currentBarCount++;
+				_currentMaximum = cm;
+				_valueBarCount = vbc;
 			}
 		}
+	}
 
-		/// <summary>
-		/// Load settings.
-		/// </summary>
-		/// <param name="settings">Settings storage.</param>
-		public override void Load(SettingsStorage settings)
-		{
-			base.Load(settings);
+	/// <inheritdoc />
+	public override void Load(SettingsStorage storage)
+	{
+		base.Load(storage);
 
-			ReversalAmount.Load(settings.GetValue<SettingsStorage>(nameof(ReversalAmount)));
-		}
+		ReversalAmount.Load(storage, nameof(ReversalAmount));
+	}
 
-		/// <summary>
-		/// Save settings.
-		/// </summary>
-		/// <param name="settings">Settings storage.</param>
-		public override void Save(SettingsStorage settings)
-		{
-			base.Save(settings);
+	/// <inheritdoc />
+	public override void Save(SettingsStorage storage)
+	{
+		base.Save(storage);
 
-			settings.SetValue(nameof(ReversalAmount), ReversalAmount.Save());
-		}
+		storage.SetValue(nameof(ReversalAmount), ReversalAmount.Save());
 	}
 }

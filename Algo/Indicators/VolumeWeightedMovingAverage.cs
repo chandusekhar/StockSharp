@@ -1,78 +1,53 @@
-﻿#region S# License
-/******************************************************************************************
-NOTICE!!!  This program and source code is owned and licensed by
-StockSharp, LLC, www.stocksharp.com
-Viewing or use of this code requires your acceptance of the license
-agreement found at https://github.com/StockSharp/StockSharp/blob/master/LICENSE
-Removal of this comment is a violation of the license agreement.
+﻿namespace StockSharp.Algo.Indicators;
 
-Project: StockSharp.Algo.Indicators.Algo
-File: VolumeWeightedMovingAverage.cs
-Created: 2015, 11, 11, 2:32 PM
-
-Copyright 2010 by StockSharp, LLC
-*******************************************************************************************/
-#endregion S# License
-namespace StockSharp.Algo.Indicators
+/// <summary>
+/// Volume weighted moving average.
+/// </summary>
+/// <remarks>
+/// https://doc.stocksharp.com/topics/api/indicators/list_of_indicators/volume_weighted_ma.html
+/// </remarks>
+[Display(
+	ResourceType = typeof(LocalizedStrings),
+	Name = LocalizedStrings.VMAKey,
+	Description = LocalizedStrings.VolumeWeightedMovingAverageKey)]
+[IndicatorIn(typeof(CandleIndicatorValue))]
+[Doc("topics/api/indicators/list_of_indicators/volume_weighted_ma.html")]
+public class VolumeWeightedMovingAverage : LengthIndicator<decimal>
 {
-	using System.ComponentModel;
+	// Текущее значение числителя
+	private readonly Sum _nominator = new();
 
-	using StockSharp.Algo.Candles;
-	using StockSharp.Localization;
+	// Текущее значение знаменателя
+	private readonly Sum _denominator = new();
 
 	/// <summary>
-	/// Volume weighted moving average.
+	/// To create the indicator <see cref="VolumeWeightedMovingAverage"/>.
 	/// </summary>
-	/// <remarks>
-	/// http://www2.wealth-lab.com/WL5Wiki/VMA.ashx http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:vwap_intraday.
-	/// </remarks>
-	[DisplayName("VMA")]
-	[DescriptionLoc(LocalizedStrings.Str823Key)]
-	public class VolumeWeightedMovingAverage : LengthIndicator<decimal>
+	public VolumeWeightedMovingAverage()
 	{
-		// Текущее значение числителя
-		private readonly Sum _nominator = new Sum();
+		Length = 32;
+	}
 
-		// Текущее значение знаменателя
-		private readonly Sum _denominator = new Sum();
+	/// <inheritdoc />
+	public override void Reset()
+	{
+		base.Reset();
+		_denominator.Length = _nominator.Length = Length;
+	}
 
-		/// <summary>
-		/// To create the indicator <see cref="VolumeWeightedMovingAverage"/>.
-		/// </summary>
-		public VolumeWeightedMovingAverage()
-		{
-			Length = 32;
-		}
+	/// <inheritdoc />
+	protected override bool CalcIsFormed() => _nominator.IsFormed && _denominator.IsFormed;
 
-		/// <summary>
-		/// To reset the indicator status to initial. The method is called each time when initial settings are changed (for example, the length of period).
-		/// </summary>
-		public override void Reset()
-		{
-			base.Reset();
-			_denominator.Length = _nominator.Length = Length;
-		}
+	/// <inheritdoc />
+	protected override IIndicatorValue OnProcess(IIndicatorValue input)
+	{
+		var candle = input.ToCandle();
 
-		/// <summary>
-		/// Whether the indicator is set.
-		/// </summary>
-		public override bool IsFormed => _nominator.IsFormed && _denominator.IsFormed;
+		var shValue = _nominator.Process(input, candle.ClosePrice * candle.TotalVolume).ToDecimal();
+		var znValue = _denominator.Process(input, candle.TotalVolume).ToDecimal();
 
-		/// <summary>
-		/// To handle the input value.
-		/// </summary>
-		/// <param name="input">The input value.</param>
-		/// <returns>The resulting value.</returns>
-		protected override IIndicatorValue OnProcess(IIndicatorValue input)
-		{
-			var candle = input.GetValue<Candle>();
-
-			var shValue = _nominator.Process(input.SetValue(this, candle.ClosePrice * candle.TotalVolume)).GetValue<decimal>();
-			var znValue = _denominator.Process(input.SetValue(this, candle.TotalVolume)).GetValue<decimal>();
-
-			return znValue != 0 
-				? new DecimalIndicatorValue(this, (shValue / znValue)) 
-				: new DecimalIndicatorValue(this);
-		}
+		return znValue != 0 
+			? new DecimalIndicatorValue(this, shValue / znValue, input.Time) 
+			: new DecimalIndicatorValue(this, input.Time);
 	}
 }

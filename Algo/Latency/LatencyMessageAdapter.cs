@@ -1,105 +1,65 @@
-#region S# License
-/******************************************************************************************
-NOTICE!!!  This program and source code is owned and licensed by
-StockSharp, LLC, www.stocksharp.com
-Viewing or use of this code requires your acceptance of the license
-agreement found at https://github.com/StockSharp/StockSharp/blob/master/LICENSE
-Removal of this comment is a violation of the license agreement.
+namespace StockSharp.Algo.Latency;
 
-Project: StockSharp.Algo.Latency.Algo
-File: LatencyMessageAdapter.cs
-Created: 2015, 11, 11, 2:32 PM
-
-Copyright 2010 by StockSharp, LLC
-*******************************************************************************************/
-#endregion S# License
-namespace StockSharp.Algo.Latency
+/// <summary>
+/// The message adapter, automatically calculating network delays.
+/// </summary>
+public class LatencyMessageAdapter : MessageAdapterWrapper
 {
-	using System;
+	/// <summary>
+	/// Initializes a new instance of the <see cref="LatencyMessageAdapter"/>.
+	/// </summary>
+	/// <param name="innerAdapter">The adapter, to which messages will be directed.</param>
+	public LatencyMessageAdapter(IMessageAdapter innerAdapter)
+		: base(innerAdapter)
+	{
+	}
 
-	using Ecng.Common;
-
-	using StockSharp.Messages;
+	private ILatencyManager _latencyManager = new LatencyManager();
 
 	/// <summary>
-	/// The message adapter, automatically calculating network delays.
+	/// Orders registration delay calculation manager.
 	/// </summary>
-	public class LatencyMessageAdapter : MessageAdapterWrapper
+	public ILatencyManager LatencyManager
 	{
-		/// <summary>
-		/// Initializes a new instance of the <see cref="LatencyMessageAdapter"/>.
-		/// </summary>
-		/// <param name="innerAdapter">The adapter, to which messages will be directed.</param>
-		public LatencyMessageAdapter(IMessageAdapter innerAdapter)
-			: base(innerAdapter)
-		{
-		}
+		get => _latencyManager;
+		set => _latencyManager = value ?? throw new ArgumentNullException(nameof(value));
+	}
 
-		private ILatencyManager _latencyManager = new LatencyManager();
+	/// <inheritdoc />
+	protected override bool OnSendInMessage(Message message)
+	{
+		message.TryInitLocalTime(this);
 
-		/// <summary>
-		/// Orders registration delay calculation manager.
-		/// </summary>
-		public ILatencyManager LatencyManager
+		LatencyManager.ProcessMessage(message);
+
+		return base.OnSendInMessage(message);
+	}
+
+	/// <inheritdoc />
+	protected override void OnInnerAdapterNewOutMessage(Message message)
+	{
+		if (message.Type == MessageTypes.Execution)
 		{
-			get { return _latencyManager; }
-			set
+			var execMsg = (ExecutionMessage)message;
+
+			if (execMsg.HasOrderInfo())
 			{
-				if (value == null)
-					throw new ArgumentNullException(nameof(value));
+				var latency = LatencyManager.ProcessMessage(execMsg);
 
-				_latencyManager = value;
+				if (latency != null)
+					execMsg.Latency = latency;
 			}
 		}
 
-		/// <summary>
-		/// Send message.
-		/// </summary>
-		/// <param name="message">Message.</param>
-		public override void SendInMessage(Message message)
-		{
-			if (message.LocalTime.IsDefault())
-				message.LocalTime = InnerAdapter.CurrentTime;
+		base.OnInnerAdapterNewOutMessage(message);
+	}
 
-			LatencyManager.ProcessMessage(message);
-
-			base.SendInMessage(message);
-		}
-
-		/// <summary>
-		/// Process <see cref="MessageAdapterWrapper.InnerAdapter"/> output message.
-		/// </summary>
-		/// <param name="message">The message.</param>
-		protected override void OnInnerAdapterNewOutMessage(Message message)
-		{
-			ProcessExecution(message);
-
-			base.OnInnerAdapterNewOutMessage(message);
-		}
-
-		private void ProcessExecution(Message message)
-		{
-			if (message.Type != MessageTypes.Execution)
-				return;
-
-			var execMsg = (ExecutionMessage)message;
-
-			if (!execMsg.HasOrderInfo())
-				return;
-
-			var latency = LatencyManager.ProcessMessage(execMsg);
-
-			if (latency != null)
-				execMsg.Latency = latency;
-		}
-
-		/// <summary>
-		/// Create a copy of <see cref="LatencyMessageAdapter"/>.
-		/// </summary>
-		/// <returns>Copy.</returns>
-		public override IMessageChannel Clone()
-		{
-			return new LatencyMessageAdapter((IMessageAdapter)InnerAdapter.Clone());
-		}
+	/// <summary>
+	/// Create a copy of <see cref="LatencyMessageAdapter"/>.
+	/// </summary>
+	/// <returns>Copy.</returns>
+	public override IMessageChannel Clone()
+	{
+		return new LatencyMessageAdapter(InnerAdapter.TypedClone());
 	}
 }

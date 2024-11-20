@@ -1,234 +1,361 @@
-#region S# License
-/******************************************************************************************
-NOTICE!!!  This program and source code is owned and licensed by
-StockSharp, LLC, www.stocksharp.com
-Viewing or use of this code requires your acceptance of the license
-agreement found at https://github.com/StockSharp/StockSharp/blob/master/LICENSE
-Removal of this comment is a violation of the license agreement.
+namespace StockSharp.Messages;
 
-Project: StockSharp.Messages.Messages
-File: PositionChangeMessage.cs
-Created: 2015, 11, 11, 2:32 PM
-
-Copyright 2010 by StockSharp, LLC
-*******************************************************************************************/
-#endregion S# License
-namespace StockSharp.Messages
+/// <summary>
+/// Type of the changes in <see cref="PositionChangeMessage"/>.
+/// </summary>
+[DataContract]
+[Serializable]
+public enum PositionChangeTypes
 {
-	using System;
-	using System.ComponentModel;
-	using System.Linq;
-	using System.Runtime.Serialization;
-
-	using Ecng.Common;
-	using Ecng.Collections;
-	using Ecng.Serialization;
-
-	using StockSharp.Localization;
+	/// <summary>
+	/// Initial value.
+	/// </summary>
+	[EnumMember]
+	[Display(ResourceType = typeof(LocalizedStrings), Name = LocalizedStrings.BeginValueKey)]
+	BeginValue,
 
 	/// <summary>
-	/// Type of the changes in <see cref="PositionChangeMessage"/>.
+	/// Current value.
 	/// </summary>
-	[System.Runtime.Serialization.DataContract]
-	[Serializable]
-	public enum PositionChangeTypes
+	[EnumMember]
+	[Display(ResourceType = typeof(LocalizedStrings), Name = LocalizedStrings.CurrentValueKey)]
+	CurrentValue,
+
+	/// <summary>
+	/// Blocked.
+	/// </summary>
+	[EnumMember]
+	[Display(ResourceType = typeof(LocalizedStrings), Name = LocalizedStrings.BlockedKey)]
+	BlockedValue,
+
+	/// <summary>
+	/// Position price.
+	/// </summary>
+	[EnumMember]
+	[Display(ResourceType = typeof(LocalizedStrings), Name = LocalizedStrings.PosPriceKey)]
+	CurrentPrice,
+
+	/// <summary>
+	/// Average price.
+	/// </summary>
+	[EnumMember]
+	[Display(ResourceType = typeof(LocalizedStrings), Name = LocalizedStrings.AveragePriceKey)]
+	AveragePrice,
+
+	/// <summary>
+	/// Unrealized profit.
+	/// </summary>
+	[EnumMember]
+	[Display(ResourceType = typeof(LocalizedStrings), Name = LocalizedStrings.UnrealizedProfitKey)]
+	UnrealizedPnL,
+
+	/// <summary>
+	/// Realized profit.
+	/// </summary>
+	[EnumMember]
+	[Display(ResourceType = typeof(LocalizedStrings), Name = LocalizedStrings.RealizedProfitKey)]
+	RealizedPnL,
+
+	/// <summary>
+	/// Variation margin.
+	/// </summary>
+	[EnumMember]
+	[Display(ResourceType = typeof(LocalizedStrings), Name = LocalizedStrings.VariationMarginKey)]
+	VariationMargin,
+
+	/// <summary>
+	/// Currency.
+	/// </summary>
+	[EnumMember]
+	[Display(ResourceType = typeof(LocalizedStrings), Name = LocalizedStrings.CurrencyKey)]
+	Currency,
+
+	/// <summary>
+	/// Extended information.
+	/// </summary>
+	[EnumMember]
+	[Display(ResourceType = typeof(LocalizedStrings), Name = LocalizedStrings.ExtendedInfoKey)]
+	[Obsolete]
+	ExtensionInfo,
+
+	/// <summary>
+	/// Margin leverage.
+	/// </summary>
+	[EnumMember]
+	[Display(ResourceType = typeof(LocalizedStrings), Name = LocalizedStrings.MarginLeverageKey)]
+	Leverage,
+
+	/// <summary>
+	/// Total commission.
+	/// </summary>
+	[EnumMember]
+	[Display(ResourceType = typeof(LocalizedStrings), Name = LocalizedStrings.TotalCommissionKey)]
+	Commission,
+
+	/// <summary>
+	/// Current value (in lots).
+	/// </summary>
+	[EnumMember]
+	[Display(ResourceType = typeof(LocalizedStrings), Name = LocalizedStrings.CurrValueInLotsKey)]
+	CurrentValueInLots,
+
+	/// <summary>
+	/// The depositary where the physical security.
+	/// </summary>
+	[EnumMember]
+	[Display(ResourceType = typeof(LocalizedStrings), Name = LocalizedStrings.DepoKey)]
+	[Obsolete]
+	DepoName,
+
+	/// <summary>
+	/// Portfolio state.
+	/// </summary>
+	[EnumMember]
+	[Display(ResourceType = typeof(LocalizedStrings), Name = LocalizedStrings.StateKey)]
+	State,
+
+	/// <summary>
+	/// Expiration date.
+	/// </summary>
+	[EnumMember]
+	[Display(ResourceType = typeof(LocalizedStrings), Name = LocalizedStrings.ExpiryDateKey)]
+	ExpirationDate,
+
+	/// <summary>
+	/// Commission (taker).
+	/// </summary>
+	[EnumMember]
+	[Display(ResourceType = typeof(LocalizedStrings), Name = LocalizedStrings.CommissionTakerKey)]
+	CommissionTaker,
+
+	/// <summary>
+	/// Commission (maker).
+	/// </summary>
+	[EnumMember]
+	[Display(ResourceType = typeof(LocalizedStrings), Name = LocalizedStrings.CommissionMakerKey)]
+	CommissionMaker,
+
+	/// <summary>
+	/// Settlement price.
+	/// </summary>
+	[EnumMember]
+	[Display(ResourceType = typeof(LocalizedStrings), Name = LocalizedStrings.SettlementPriceKey)]
+	SettlementPrice,
+
+	/// <summary>
+	/// Orders (bids).
+	/// </summary>
+	[EnumMember]
+	[Display(ResourceType = typeof(LocalizedStrings), Name = LocalizedStrings.OrdersBidsKey)]
+	BuyOrdersCount,
+	
+	/// <summary>
+	/// Orders (asks).
+	/// </summary>
+	[EnumMember]
+	[Display(ResourceType = typeof(LocalizedStrings), Name = LocalizedStrings.OrdersAsksKey)]
+	SellOrdersCount,
+	
+	/// <summary>
+	/// Margin (buy).
+	/// </summary>
+	[EnumMember]
+	[Display(ResourceType = typeof(LocalizedStrings), Name = LocalizedStrings.MarginBuyKey)]
+	BuyOrdersMargin,
+	
+	/// <summary>
+	/// Margin (sell).
+	/// </summary>
+	[EnumMember]
+	[Display(ResourceType = typeof(LocalizedStrings), Name = LocalizedStrings.MarginSellKey)]
+	SellOrdersMargin,
+	
+	/// <summary>
+	/// Orders (margin).
+	/// </summary>
+	[EnumMember]
+	[Display(ResourceType = typeof(LocalizedStrings), Name = LocalizedStrings.OrdersMarginKey)]
+	OrdersMargin,
+
+	/// <summary>
+	/// Orders.
+	/// </summary>
+	[EnumMember]
+	[Display(ResourceType = typeof(LocalizedStrings), Name = LocalizedStrings.OrdersCountKey)]
+	OrdersCount,
+
+	/// <summary>
+	/// Trades.
+	/// </summary>
+	[EnumMember]
+	[Display(ResourceType = typeof(LocalizedStrings), Name = LocalizedStrings.TradesKey)]
+	TradesCount,
+
+	/// <summary>
+	/// Liquidation price.
+	/// </summary>
+	[EnumMember]
+	[Display(ResourceType = typeof(LocalizedStrings), Name = LocalizedStrings.LiquidationPriceKey)]
+	LiquidationPrice,
+}
+
+/// <summary>
+/// The message contains information about the position changes.
+/// </summary>
+[DataContract]
+[Serializable]
+[Display(
+	ResourceType = typeof(LocalizedStrings),
+	Name = LocalizedStrings.PositionKey,
+	Description = LocalizedStrings.PositionDescKey)]
+public class PositionChangeMessage : BaseChangeMessage<PositionChangeMessage,
+	PositionChangeTypes>, IPortfolioNameMessage, ISecurityIdMessage, IStrategyIdMessage
+{
+	/// <inheritdoc />
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.NameKey,
+		Description = LocalizedStrings.PortfolioNameKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public string PortfolioName { get; set; }
+
+	/// <summary>
+	/// Client code assigned by the broker.
+	/// </summary>
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.ClientCodeKey,
+		Description = LocalizedStrings.ClientCodeDescKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public string ClientCode { get; set; }
+
+	/// <inheritdoc />
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.SecurityIdKey,
+		Description = LocalizedStrings.SecurityIdKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public SecurityId SecurityId { get; set; }
+
+	/// <summary>
+	/// The depositary where the physical security.
+	/// </summary>
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.DepoKey,
+		Description = LocalizedStrings.DepoNameKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public string DepoName { get; set; }
+
+	/// <summary>
+	/// Limit type for Т+ market.
+	/// </summary>
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.LimitTypeKey,
+		Description = LocalizedStrings.PosLimitKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	//[Nullable]
+	public TPlusLimits? LimitType { get; set; }
+
+	/// <summary>
+	/// Text position description.
+	/// </summary>
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.DescriptionKey,
+		Description = LocalizedStrings.PosTextKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public string Description { get; set; }
+
+	/// <summary>
+	/// Electronic board code.
+	/// </summary>
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.BoardKey,
+		Description = LocalizedStrings.BoardCodeKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public string BoardCode { get; set; }
+
+	/// <inheritdoc />
+	[DataMember]
+	public string StrategyId { get; set; }
+
+	/// <summary>
+	/// Side.
+	/// </summary>
+	[DataMember]
+	public Sides? Side { get; set; }
+
+	/// <summary>
+	/// Initializes a new instance of the <see cref="PositionChangeMessage"/>.
+	/// </summary>
+	public PositionChangeMessage()
+		: this(MessageTypes.PositionChange)
 	{
-		/// <summary>
-		/// Initial value.
-		/// </summary>
-		[EnumMember]
-		[EnumDisplayNameLoc(LocalizedStrings.Str253Key)]
-		BeginValue,
-
-		/// <summary>
-		/// Current value.
-		/// </summary>
-		[EnumMember]
-		[EnumDisplayNameLoc(LocalizedStrings.Str254Key)]
-		CurrentValue,
-
-		/// <summary>
-		/// Blocked.
-		/// </summary>
-		[EnumMember]
-		[EnumDisplayNameLoc(LocalizedStrings.Str255Key)]
-		BlockedValue,
-
-		/// <summary>
-		/// Position price.
-		/// </summary>
-		[EnumMember]
-		[EnumDisplayNameLoc(LocalizedStrings.Str256Key)]
-		CurrentPrice,
-
-		/// <summary>
-		/// Average price.
-		/// </summary>
-		[EnumMember]
-		[EnumDisplayNameLoc(LocalizedStrings.Str257Key)]
-		AveragePrice,
-
-		/// <summary>
-		/// Unrealized profit.
-		/// </summary>
-		[EnumMember]
-		[EnumDisplayNameLoc(LocalizedStrings.Str258Key)]
-		UnrealizedPnL,
-
-		/// <summary>
-		/// Realized profit.
-		/// </summary>
-		[EnumMember]
-		[EnumDisplayNameLoc(LocalizedStrings.Str259Key)]
-		RealizedPnL,
-
-		/// <summary>
-		/// Variation margin.
-		/// </summary>
-		[EnumMember]
-		[EnumDisplayNameLoc(LocalizedStrings.Str260Key)]
-		VariationMargin,
-
-		/// <summary>
-		/// Currency.
-		/// </summary>
-		[EnumMember]
-		[EnumDisplayNameLoc(LocalizedStrings.CurrencyKey)]
-		Currency,
-
-		/// <summary>
-		/// Extended information.
-		/// </summary>
-		[EnumMember]
-		[EnumDisplayNameLoc(LocalizedStrings.ExtendedInfoKey)]
-		ExtensionInfo,
-
-		/// <summary>
-		/// Margin leverage.
-		/// </summary>
-		[EnumMember]
-		[EnumDisplayNameLoc(LocalizedStrings.Str261Key)]
-		Leverage,
-
-		/// <summary>
-		/// Total commission.
-		/// </summary>
-		[EnumMember]
-		[EnumDisplayNameLoc(LocalizedStrings.Str262Key)]
-		Commission,
-
-		/// <summary>
-		/// Current value (in lots).
-		/// </summary>
-		[EnumMember]
-		[EnumDisplayNameLoc(LocalizedStrings.Str263Key)]
-		CurrentValueInLots,
-
-		/// <summary>
-		/// The depositary where the physical security.
-		/// </summary>
-		[EnumMember]
-		[EnumDisplayNameLoc(LocalizedStrings.Str264Key)]
-		DepoName,
-
-		/// <summary>
-		/// Portfolio state.
-		/// </summary>
-		[EnumMember]
-		[EnumDisplayNameLoc(LocalizedStrings.Str265Key)]
-		State,
 	}
 
 	/// <summary>
-	/// The message contains information about the position changes.
+	/// Initializes a new instance of the <see cref="PositionChangeMessage"/>.
 	/// </summary>
-	[System.Runtime.Serialization.DataContract]
-	[Serializable]
-	public sealed class PositionChangeMessage : BaseChangeMessage<PositionChangeTypes>
+	/// <param name="type">Message type.</param>
+	protected PositionChangeMessage(MessageTypes type)
+		: base(type)
 	{
-		/// <summary>
-		/// Security ID.
-		/// </summary>
-		[DataMember]
-		[DisplayNameLoc(LocalizedStrings.SecurityIdKey)]
-		[DescriptionLoc(LocalizedStrings.SecurityIdKey, true)]
-		[MainCategory]
-		public SecurityId SecurityId { get; set; }
+	}
 
-		/// <summary>
-		/// Portfolio name.
-		/// </summary>
-		[DataMember]
-		[DisplayNameLoc(LocalizedStrings.PortfolioKey)]
-		[DescriptionLoc(LocalizedStrings.PortfolioNameKey)]
-		[MainCategory]
-		[ReadOnly(true)]
-		public string PortfolioName { get; set; }
+	/// <inheritdoc />
+	public override DataType DataType => DataType.PositionChanges;
 
-		/// <summary>
-		/// The depositary where the physical security.
-		/// </summary>
-		[DisplayNameLoc(LocalizedStrings.Str264Key)]
-		[DescriptionLoc(LocalizedStrings.DepoNameKey)]
-		[MainCategory]
-		public string DepoName { get; set; }
+	/// <summary>
+	/// Create a copy of <see cref="PositionChangeMessage"/>.
+	/// </summary>
+	/// <returns>Copy.</returns>
+	public override Message Clone()
+	{
+		var clone = new PositionChangeMessage();
 
-		/// <summary>
-		/// Limit type for Т+ market.
-		/// </summary>
-		[DisplayNameLoc(LocalizedStrings.Str266Key)]
-		[DescriptionLoc(LocalizedStrings.Str267Key)]
-		[MainCategory]
-		[Nullable]
-		public TPlusLimits? LimitType { get; set; }
+		CopyTo(clone);
 
-		/// <summary>
-		/// Text position description.
-		/// </summary>
-		[DataMember]
-		[DisplayNameLoc(LocalizedStrings.DescriptionKey)]
-		[DescriptionLoc(LocalizedStrings.Str269Key)]
-		[MainCategory]
-		public string Description { get; set; }
+		return clone;
+	}
 
-		/// <summary>
-		/// Initializes a new instance of the <see cref="PositionChangeMessage"/>.
-		/// </summary>
-		public PositionChangeMessage()
-			: base(MessageTypes.PositionChange)
-		{
-		}
+	/// <inheritdoc />
+	public override void CopyTo(PositionChangeMessage destination)
+	{
+		base.CopyTo(destination);
 
-		/// <summary>
-		/// Create a copy of <see cref="PositionChangeMessage"/>.
-		/// </summary>
-		/// <returns>Copy.</returns>
-		public override Message Clone()
-		{
-			var msg = new PositionChangeMessage
-			{
-				LocalTime = LocalTime,
-				PortfolioName = PortfolioName,
-				SecurityId = SecurityId,
-				DepoName = DepoName,
-				ServerTime = ServerTime,
-				LimitType = LimitType,
-				Description = Description,
-			};
+		destination.SecurityId = SecurityId;
+		destination.DepoName = DepoName;
+		destination.LimitType = LimitType;
+		destination.Description = Description;
+		destination.PortfolioName = PortfolioName;
+		destination.ClientCode = ClientCode;
+		destination.BoardCode = BoardCode;
+		destination.StrategyId = StrategyId;
+		destination.Side = Side;
+	}
 
-			msg.Changes.AddRange(Changes);
-			this.CopyExtensionInfo(msg);
+	/// <inheritdoc />
+	public override string ToString()
+	{
+		var str = base.ToString() + $",Sec={SecurityId},P={PortfolioName},CL={ClientCode},L={LimitType},Changes={Changes.Select(c => c.ToString()).JoinComma()}";
 
-			return msg;
-		}
+		if (!StrategyId.IsEmpty())
+			str += $",Strategy={StrategyId}";
 
-		/// <summary>
-		/// Returns a string that represents the current object.
-		/// </summary>
-		/// <returns>A string that represents the current object.</returns>
-		public override string ToString()
-		{
-			return base.ToString() + $",Sec={SecurityId},P={PortfolioName},Changes={Changes.Select(c => c.ToString()).Join(",")}";
-		}
+		if (!Description.IsEmpty())
+			str += $",Description={Description}";
+
+		if (Side != null)
+			str += $",Side={Side}";
+
+		return str;
 	}
 }

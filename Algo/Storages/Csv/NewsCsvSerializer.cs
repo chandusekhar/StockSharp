@@ -1,75 +1,77 @@
-#region S# License
-/******************************************************************************************
-NOTICE!!!  This program and source code is owned and licensed by
-StockSharp, LLC, www.stocksharp.com
-Viewing or use of this code requires your acceptance of the license
-agreement found at https://github.com/StockSharp/StockSharp/blob/master/LICENSE
-Removal of this comment is a violation of the license agreement.
+namespace StockSharp.Algo.Storages.Csv;
 
-Project: StockSharp.Algo.Storages.Csv.Algo
-File: NewsCsvSerializer.cs
-Created: 2015, 12, 14, 1:43 PM
-
-Copyright 2010 by StockSharp, LLC
-*******************************************************************************************/
-#endregion S# License
-namespace StockSharp.Algo.Storages.Csv
+/// <summary>
+/// The news serializer in the CSV format.
+/// </summary>
+public class NewsCsvSerializer : CsvMarketDataSerializer<NewsMessage>
 {
-	using System;
+	private const string _expiryFormat = "yyyyMMddHHmmssfff zzz";
 
-	using Ecng.Common;
-
-	using StockSharp.Messages;
-
-	/// <summary>
-	/// The news serializer in the CSV format.
-	/// </summary>
-	public class NewsCsvSerializer : CsvMarketDataSerializer<NewsMessage>
+	/// <inheritdoc />
+	protected override void Write(CsvFileWriter writer, NewsMessage data, IMarketDataMetaInfo metaInfo)
 	{
-		/// <summary>
-		/// Write data to the specified writer.
-		/// </summary>
-		/// <param name="writer">CSV writer.</param>
-		/// <param name="data">Data.</param>
-		protected override void Write(CsvFileWriter writer, NewsMessage data)
+		writer.WriteRow(
+		[
+			data.ServerTime.WriteTimeMls(),
+			data.ServerTime.ToString("zzz"),
+			data.Headline,
+			data.Source,
+			data.Url,
+			data.Id,
+			data.BoardCode,
+			data.SecurityId?.SecurityCode,
+			data.Priority?.To<string>(),
+			data.Language,
+			data.SecurityId?.BoardCode,
+			data.ExpiryDate?.ToString(_expiryFormat),
+			data.SeqNum.DefaultAsNull().ToString(),
+		]);
+
+		metaInfo.LastTime = data.ServerTime.UtcDateTime;
+	}
+
+	/// <inheritdoc />
+	protected override NewsMessage Read(FastCsvReader reader, IMarketDataMetaInfo metaInfo)
+	{
+		var news = new NewsMessage
 		{
-			writer.WriteRow(new[]
+			ServerTime = reader.ReadTime(metaInfo.Date),
+			Headline = reader.ReadString(),
+			Source = reader.ReadString(),
+			Url = reader.ReadString(),
+			Id = reader.ReadString(),
+			BoardCode = reader.ReadString(),
+		};
+
+		var secCode = reader.ReadString();
+
+		if (!secCode.IsEmpty())
+			news.SecurityId = new SecurityId { SecurityCode = secCode };
+
+		if ((reader.ColumnCurr + 1) < reader.ColumnCount)
+			news.Priority = reader.ReadNullableEnum<NewsPriorities>();
+
+		if ((reader.ColumnCurr + 1) < reader.ColumnCount)
+			news.Language = reader.ReadString();
+
+		if ((reader.ColumnCurr + 1) < reader.ColumnCount)
+		{
+			var boardCode = reader.ReadString();
+
+			if (news.SecurityId != null)
 			{
-				data.ServerTime.UtcDateTime.ToString(TimeFormat),
-				data.ServerTime.ToString("zzz"),
-				data.Headline,
-				data.Source,
-				data.Url?.ToString(),
-				data.Id,
-				data.BoardCode,
-				data.SecurityId?.SecurityCode
-			});
+				var secId = news.SecurityId.Value;
+				secId.BoardCode = boardCode;
+				news.SecurityId = secId;
+			}
 		}
 
-		/// <summary>
-		/// Read data from the specified reader.
-		/// </summary>
-		/// <param name="reader">CSV reader.</param>
-		/// <param name="date">Date.</param>
-		/// <returns>Data.</returns>
-		protected override NewsMessage Read(FastCsvReader reader, DateTime date)
-		{
-			var news = new NewsMessage
-			{
-				ServerTime = ReadTime(reader, date),
-				Headline = reader.ReadString(),
-				Source = reader.ReadString(),
-				Url = reader.ReadString().To<Uri>(),
-				Id = reader.ReadString(),
-				BoardCode = reader.ReadString(),
-			};
+		if ((reader.ColumnCurr + 1) < reader.ColumnCount)
+			news.ExpiryDate = reader.ReadString().TryToDateTimeOffset(_expiryFormat);
 
-			var secCode = reader.ReadString();
+		if ((reader.ColumnCurr + 1) < reader.ColumnCount)
+			news.SeqNum = reader.ReadNullableLong() ?? 0L;
 
-			if (!secCode.IsEmpty())
-				news.SecurityId = new SecurityId { SecurityCode = secCode };
-
-			return news;
-		}
+		return news;
 	}
 }

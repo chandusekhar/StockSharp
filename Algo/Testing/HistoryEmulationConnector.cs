@@ -1,742 +1,513 @@
-#region S# License
-/******************************************************************************************
-NOTICE!!!  This program and source code is owned and licensed by
-StockSharp, LLC, www.stocksharp.com
-Viewing or use of this code requires your acceptance of the license
-agreement found at https://github.com/StockSharp/StockSharp/blob/master/LICENSE
-Removal of this comment is a violation of the license agreement.
+namespace StockSharp.Algo.Testing;
 
-Project: StockSharp.Algo.Testing.Algo
-File: HistoryEmulationConnector.cs
-Created: 2015, 11, 11, 2:32 PM
+using StockSharp.Algo.Risk;
+using StockSharp.Algo.Commissions;
 
-Copyright 2010 by StockSharp, LLC
-*******************************************************************************************/
-#endregion S# License
-namespace StockSharp.Algo.Testing
+/// <summary>
+/// The emulation connection. It uses historical data and/or occasionally generated.
+/// </summary>
+public class HistoryEmulationConnector : BaseEmulationConnector
 {
-	using System;
-	using System.Collections.Generic;
-	using System.Globalization;
-	using System.Linq;
-
-	using Ecng.Collections;
-	using Ecng.Common;
-	using Ecng.ComponentModel;
-
-	using MoreLinq;
-
-	using StockSharp.Logging;
-	using StockSharp.BusinessEntities;
-	using StockSharp.Algo.Storages;
-	using StockSharp.Algo.Candles;
-	using StockSharp.Messages;
-	using StockSharp.Localization;
+	private bool _stopPending;
 
 	/// <summary>
-	/// The emulational connection. It uses historic data and/or occasionally generated.
+	/// Initializes a new instance of the <see cref="HistoryEmulationConnector"/>.
 	/// </summary>
-	public class HistoryEmulationConnector : BaseEmulationConnector, IExternalCandleSource
+	/// <param name="securityProvider">The provider of information about instruments.</param>
+	public HistoryEmulationConnector(ISecurityProvider securityProvider)
+		: this(securityProvider, [Portfolio.CreateSimulator()])
 	{
-		private class EmulationEntityFactory : EntityFactory
+	}
+
+	/// <summary>
+	/// Initializes a new instance of the <see cref="HistoryEmulationConnector"/>.
+	/// </summary>
+	/// <param name="securityProvider">The provider of information about instruments.</param>
+	/// <param name="portfolioProvider">The portfolio to be used to register orders. If value is not given, the portfolio with default name Simulator will be created.</param>
+	/// <param name="storageRegistry">Market data storage.</param>
+	public HistoryEmulationConnector(ISecurityProvider securityProvider, IPortfolioProvider portfolioProvider, IStorageRegistry storageRegistry)
+		: this(securityProvider, portfolioProvider, storageRegistry.CheckOnNull(nameof(storageRegistry)).ExchangeInfoProvider, storageRegistry)
+	{
+	}
+
+	/// <summary>
+	/// Initializes a new instance of the <see cref="HistoryEmulationConnector"/>.
+	/// </summary>
+	/// <param name="securities">Instruments, which will be sent through the <see cref="IConnector.NewSecurities"/> event.</param>
+	/// <param name="portfolios">Portfolios, which will be sent through the <see cref="IConnector.NewPortfolios"/> event.</param>
+	public HistoryEmulationConnector(IEnumerable<Security> securities, IEnumerable<Portfolio> portfolios)
+		: this(securities, portfolios, new StorageRegistry())
+	{
+	}
+
+	/// <summary>
+	/// Initializes a new instance of the <see cref="HistoryEmulationConnector"/>.
+	/// </summary>
+	/// <param name="securities">Instruments, the operation will be performed with.</param>
+	/// <param name="portfolios">Portfolios, the operation will be performed with.</param>
+	/// <param name="storageRegistry">Market data storage.</param>
+	public HistoryEmulationConnector(IEnumerable<Security> securities, IEnumerable<Portfolio> portfolios, IStorageRegistry storageRegistry)
+		: this(new CollectionSecurityProvider(securities), new CollectionPortfolioProvider(portfolios), storageRegistry.CheckOnNull(nameof(storageRegistry)).ExchangeInfoProvider, storageRegistry)
+	{
+	}
+
+	/// <summary>
+	/// Initializes a new instance of the <see cref="HistoryEmulationConnector"/>.
+	/// </summary>
+	/// <param name="securityProvider">The provider of information about instruments.</param>
+	/// <param name="portfolios">Portfolios, the operation will be performed with.</param>
+	public HistoryEmulationConnector(ISecurityProvider securityProvider, IEnumerable<Portfolio> portfolios)
+		: this(securityProvider, new CollectionPortfolioProvider(portfolios), new InMemoryExchangeInfoProvider())
+	{
+	}
+
+	/// <summary>
+	/// Initializes a new instance of the <see cref="HistoryEmulationConnector"/>.
+	/// </summary>
+	/// <param name="securityProvider">The provider of information about instruments.</param>
+	/// <param name="portfolioProvider">The portfolio to be used to register orders. If value is not given, the portfolio with default name Simulator will be created.</param>
+	/// <param name="exchangeInfoProvider">Exchanges and trading boards provider.</param>
+	public HistoryEmulationConnector(ISecurityProvider securityProvider, IPortfolioProvider portfolioProvider, IExchangeInfoProvider exchangeInfoProvider)
+		: this(securityProvider, portfolioProvider, exchangeInfoProvider, new StorageRegistry(exchangeInfoProvider))
+	{
+	}
+
+	/// <summary>
+	/// Initializes a new instance of the <see cref="HistoryEmulationConnector"/>.
+	/// </summary>
+	/// <param name="securityProvider">The provider of information about instruments.</param>
+	/// <param name="portfolioProvider">The portfolio to be used to register orders. If value is not given, the portfolio with default name Simulator will be created.</param>
+	/// <param name="storageRegistry">Market data storage.</param>
+	/// <param name="exchangeInfoProvider">Exchanges and trading boards provider.</param>
+	public HistoryEmulationConnector(ISecurityProvider securityProvider, IPortfolioProvider portfolioProvider, IExchangeInfoProvider exchangeInfoProvider, IStorageRegistry storageRegistry)
+		: this(new HistoryMessageAdapter(new IncrementalIdGenerator(), securityProvider) { StorageRegistry = storageRegistry }, true, new InMemoryMessageChannel(new MessageByLocalTimeQueue(), "Emulator in", err => err.LogError()), securityProvider, portfolioProvider, exchangeInfoProvider)
+	{
+	}
+
+	/// <summary>
+	/// Initializes a new instance of the <see cref="HistoryEmulationConnector"/>.
+	/// </summary>
+	/// <param name="innerAdapter">Underlying adapter.</param>
+	/// <param name="ownInnerAdapter">Control <paramref name="innerAdapter"/> lifetime.</param>
+	/// <param name="inChannel">Incoming messages channel.</param>
+	/// <param name="securityProvider">The provider of information about instruments.</param>
+	/// <param name="portfolioProvider">The portfolio to be used to register orders. If value is not given, the portfolio with default name Simulator will be created.</param>
+	/// <param name="exchangeInfoProvider">Exchanges and trading boards provider.</param>
+	public HistoryEmulationConnector(IMessageAdapter innerAdapter, bool ownInnerAdapter, IMessageChannel inChannel, ISecurityProvider securityProvider, IPortfolioProvider portfolioProvider, IExchangeInfoProvider exchangeInfoProvider)
+		: base(new EmulationMessageAdapter(innerAdapter, inChannel, true, securityProvider, portfolioProvider, exchangeInfoProvider) { OwnInnerAdapter = ownInnerAdapter }, false, false)
+	{
+		MarketTimeChangedInterval = HistoryMessageAdapter.MarketTimeChangedInterval;
+
+		Adapter.LatencyManager = null;
+		Adapter.CommissionManager = null;
+		Adapter.PnLManager = null;
+		Adapter.SlippageManager = null;
+		Adapter.SupportSecurityAll = false;
+		Adapter.IsSupportPositionEmulation = false;
+		Adapter.SendFinishedCandlesImmediatelly = true;
+		//Adapter.SupportCandlesCompression = false;
+		Adapter.SupportBuildingFromOrderLog = false;
+		Adapter.SupportPartialDownload = false;
+		Adapter.SupportLookupTracking = false;
+		Adapter.SupportOrderBookTruncate = false;
+		Adapter.ConnectDisconnectEventOnFirstAdapter = false;
+
+		InMessageChannel = new PassThroughMessageChannel();
+		OutMessageChannel = new PassThroughMessageChannel();
+
+		// при тестировании по свечкам, время меняется быстрее и таймаут должен быть больше 30с.
+		//ReConnectionSettings.TimeOutInterval = TimeSpan.MaxValue;
+
+		//MaxMessageCount = 1000;
+
+		MarketTimeChanged += OnMarketTimeChanged;
+		Disconnected += OnDisconnected;
+
+		SupportFilteredMarketDepth = false;
+		UpdateSecurityLastQuotes = false;
+		UpdateSecurityByLevel1 = false;
+		SupportBasketSecurities = true;
+
+		innerAdapter.Parent ??= this;
+
+		LookupMessagesOnConnect.Remove(MessageTypes.SecurityLookup);
+	}
+
+	/// <inheritdoc />
+	public override IRiskManager RiskManager => null;
+
+	/// <inheritdoc />
+	public override bool SupportSnapshots => false;
+
+	/// <summary>
+	/// The adapter, receiving messages form the storage <see cref="IStorageRegistry"/>.
+	/// </summary>
+	public HistoryMessageAdapter HistoryMessageAdapter => EmulationAdapter.FindAdapter<HistoryMessageAdapter>();
+
+	private ChannelStates _state = ChannelStates.Stopped;
+
+	/// <summary>
+	/// The emulator state.
+	/// </summary>
+	public ChannelStates State
+	{
+		get => _state;
+		private set
 		{
-			private readonly ISecurityProvider _securityProvider;
-			private readonly IDictionary<string, Portfolio> _portfolios;
+			if (_state == value)
+				return;
 
-			public EmulationEntityFactory(ISecurityProvider securityProvider, IEnumerable<Portfolio> portfolios)
+			if (!EmulationAdapter.OwnInnerAdapter && _state == ChannelStates.Stopped && value == ChannelStates.Stopping)
+				return;
+
+			bool throwError;
+
+			var channel = EmulationAdapter.InChannel;
+
+			switch (value)
 			{
-				_securityProvider = securityProvider;
-				_portfolios = portfolios.ToDictionary(p => p.Name, p => p, StringComparer.InvariantCultureIgnoreCase);
-			}
+				case ChannelStates.Stopped:
+					throwError = _state != ChannelStates.Stopping;
 
-			public override Security CreateSecurity(string id)
-			{
-				return _securityProvider.LookupById(id) ?? base.CreateSecurity(id);
-			}
+					//if (EmulationAdapter.OwnInnerAdapter)
+						if (!EmulationAdapter.OwnInnerAdapter && channel is InMemoryMessageChannel inMem)
+							inMem.Disabled = true;
 
-			public override Portfolio CreatePortfolio(string name)
-			{
-				return _portfolios.TryGetValue(name) ?? base.CreatePortfolio(name);
-			}
-		}
+						channel.Close();
 
-		private class HistoryBasketMessageAdapter : BasketMessageAdapter
-		{
-			private readonly HistoryEmulationConnector _parent;
+					break;
+				case ChannelStates.Stopping:
+					throwError = _state is not ChannelStates.Started and not ChannelStates.Suspended
+						and not ChannelStates.Starting;  // при ошибках при запуске эмуляции состояние может быть Starting
 
-			public HistoryBasketMessageAdapter(HistoryEmulationConnector parent)
-				: base(parent.TransactionIdGenerator)
-			{
-				_parent = parent;
-			}
-
-			public override DateTimeOffset CurrentTime => _parent.CurrentTime;
-		}
-
-		private sealed class HistoryEmulationMessageChannel : Cloneable<IMessageChannel>, IMessageChannel
-		{
-			private readonly MessagePriorityQueue _messageQueue = new MessagePriorityQueue();
-
-			private readonly HistoryMessageAdapter _historyMessageAdapter;
-			private readonly Action<Exception> _errorHandler;
-
-			public HistoryEmulationMessageChannel(HistoryMessageAdapter historyMessageAdapter, Action<Exception> errorHandler)
-			{
-				if (historyMessageAdapter == null)
-					throw new ArgumentNullException(nameof(historyMessageAdapter));
-
-				if (errorHandler == null)
-					throw new ArgumentNullException(nameof(errorHandler));
-
-				_historyMessageAdapter = historyMessageAdapter;
-				_errorHandler = errorHandler;
-
-				_messageQueue.Close();
-			}
-
-			public event Action<Message> NewOutMessage;
-
-			public bool IsOpened => !_messageQueue.IsClosed;
-
-			public void Open()
-			{
-				_messageQueue.Open();
-
-				ThreadingHelper
-					.Thread(() => CultureInfo.InvariantCulture.DoInCulture(() =>
+					//if (EmulationAdapter.OwnInnerAdapter)
 					{
-						while (!_messageQueue.IsClosed)
-						{
-							try
-							{
-								var sended = _historyMessageAdapter.SendOutMessage();
+						channel.Clear();
 
-								Message message;
+						if (_state == ChannelStates.Suspended)
+							channel.Resume();
+					}
 
-								if (!_messageQueue.TryDequeue(out message, true, !sended))
-								{
-									if (!sended)
-										break;
-								}
-								else
-									NewOutMessage?.Invoke(message);
-							}
-							catch (Exception ex)
-							{
-								_errorHandler(ex);
-							}
-						}
-					}))
-					.Name("History emulation channel thread.")
-					.Launch();
+					break;
+				case ChannelStates.Starting:
+					throwError = _state is not ChannelStates.Stopped and not ChannelStates.Suspended;
+					break;
+				case ChannelStates.Started:
+					throwError = _state != ChannelStates.Starting;
+					break;
+				case ChannelStates.Suspending:
+					throwError = _state != ChannelStates.Started;
+					break;
+				case ChannelStates.Suspended:
+					throwError = _state != ChannelStates.Suspending;
+
+					//if (EmulationAdapter.OwnInnerAdapter)
+						channel.Suspend();
+
+					break;
+				default:
+					throw new ArgumentOutOfRangeException(nameof(value), value, LocalizedStrings.InvalidValue);
 			}
 
-			public void Close()
-			{
-				_messageQueue.Close();
-			}
+			if (throwError)
+				throw new InvalidOperationException(LocalizedStrings.TaskCannotChangeState.Put(_state, value));
 
-			public void SendInMessage(Message message)
-			{
-				if (!IsOpened)
-					Open();
+			this.AddInfoLog("State: {0}->{1}", _state, value);
+			_state = value;
 
-				_messageQueue.Enqueue(message);
-			}
-
-			void IDisposable.Dispose()
-			{
-				Close();
-			}
-
-			public override IMessageChannel Clone()
-			{
-				return new HistoryEmulationMessageChannel(_historyMessageAdapter, _errorHandler);
-			}
-		}
-
-		private readonly CachedSynchronizedDictionary<Tuple<SecurityId, MarketDataTypes, object>, int> _subscribedCandles = new CachedSynchronizedDictionary<Tuple<SecurityId, MarketDataTypes, object>, int>();
-		private readonly CachedSynchronizedDictionary<Tuple<SecurityId, MarketDataTypes, object>, int> _historySourceSubscriptions = new CachedSynchronizedDictionary<Tuple<SecurityId, MarketDataTypes, object>, int>();
-		private readonly SynchronizedDictionary<Tuple<SecurityId, MarketDataTypes, object>, List<CandleSeries>> _series = new SynchronizedDictionary<Tuple<SecurityId, MarketDataTypes, object>, List<CandleSeries>>();
-		
-		/// <summary>
-		/// Initializes a new instance of the <see cref="HistoryEmulationConnector"/>.
-		/// </summary>
-		/// <param name="securities">Instruments, which will be sent through the <see cref="IConnector.NewSecurities"/> event.</param>
-		/// <param name="portfolios">Portfolios, which will be sent through the <see cref="IConnector.NewPortfolios"/> event.</param>
-		public HistoryEmulationConnector(IEnumerable<Security> securities, IEnumerable<Portfolio> portfolios)
-			: this(securities, portfolios, new StorageRegistry())
-		{
-		}
-
-		/// <summary>
-		/// Initializes a new instance of the <see cref="HistoryEmulationConnector"/>.
-		/// </summary>
-		/// <param name="securities">Instruments, the operation will be performed with.</param>
-		/// <param name="portfolios">Portfolios, the operation will be performed with.</param>
-		/// <param name="storageRegistry">Market data storage.</param>
-		public HistoryEmulationConnector(IEnumerable<Security> securities, IEnumerable<Portfolio> portfolios, IStorageRegistry storageRegistry)
-			: this((ISecurityProvider)new CollectionSecurityProvider(securities), portfolios, storageRegistry)
-		{
-		}
-
-		/// <summary>
-		/// Initializes a new instance of the <see cref="HistoryEmulationConnector"/>.
-		/// </summary>
-		/// <param name="securityProvider">The provider of information about instruments.</param>
-		/// <param name="portfolios">Portfolios, the operation will be performed with.</param>
-		/// <param name="storageRegistry">Market data storage.</param>
-		public HistoryEmulationConnector(ISecurityProvider securityProvider, IEnumerable<Portfolio> portfolios, IStorageRegistry storageRegistry)
-		{
-			if (securityProvider == null)
-				throw new ArgumentNullException(nameof(securityProvider));
-
-			if (portfolios == null)
-				throw new ArgumentNullException(nameof(portfolios));
-
-			if (storageRegistry == null)
-				throw new ArgumentNullException(nameof(storageRegistry));
-
-			// чтобы каждый раз при повторной эмуляции получать одинаковые номера транзакций
-			TransactionIdGenerator = new IncrementalIdGenerator();
-
-			_initialMoney = portfolios.ToDictionary(pf => pf, pf => pf.BeginValue);
-			EntityFactory = new EmulationEntityFactory(securityProvider, _initialMoney.Keys);
-
-			LatencyManager = null;
-			RiskManager = null;
-			CommissionManager = null;
-			PnLManager = null;
-			SlippageManager = null;
-
-			HistoryMessageAdapter = new HistoryMessageAdapter(TransactionIdGenerator, securityProvider) { StorageRegistry = storageRegistry };
-
-			InMessageChannel = new HistoryEmulationMessageChannel(HistoryMessageAdapter, SendOutError);
-			OutMessageChannel = new PassThroughMessageChannel();
-
-			Adapter = new HistoryBasketMessageAdapter(this);
-			Adapter.InnerAdapters.Add(EmulationAdapter);
-			Adapter.InnerAdapters.Add(HistoryMessageAdapter);
-
-			// при тестировании по свечкам, время меняется быстрее и таймаут должен быть больше 30с.
-			ReConnectionSettings.TimeOutInterval = TimeSpan.MaxValue;
-
-			//MaxMessageCount = 1000;
-
-			TradesKeepCount = 0;
-		}
-
-		/// <summary>
-		/// The adapter, receiving messages form the storage <see cref="IStorageRegistry"/>.
-		/// </summary>
-		public HistoryMessageAdapter HistoryMessageAdapter { get; }
-
-		/// <summary>
-		/// The maximal size of the message queue, up to which history data are red. By default, it is equal to 1000.
-		/// </summary>
-		public int MaxMessageCount
-		{
-			get { return HistoryMessageAdapter.MaxMessageCount; }
-			set { HistoryMessageAdapter.MaxMessageCount = value; }
-		}
-
-		private readonly Dictionary<Portfolio, decimal?> _initialMoney;
-
-		/// <summary>
-		/// The initial size of monetary funds on accounts.
-		/// </summary>
-		public IDictionary<Portfolio, decimal?> InitialMoney => _initialMoney;
-
-		/// <summary>
-		/// The number of loaded messages.
-		/// </summary>
-		public int LoadedMessageCount => HistoryMessageAdapter.LoadedMessageCount;
-
-		/// <summary>
-		/// The number of processed messages.
-		/// </summary>
-		public int ProcessedMessageCount => EmulationAdapter.ProcessedMessageCount;
-
-		private EmulationStates _state = EmulationStates.Stopped;
-
-		/// <summary>
-		/// The emulator state.
-		/// </summary>
-		public EmulationStates State
-		{
-			get { return _state; }
-			private set
-			{
-				if (_state == value)
-					return;
-
-				bool throwError;
-
-				switch (value)
-				{
-					case EmulationStates.Stopped:
-						throwError = (_state != EmulationStates.Stopping);
-						break;
-					case EmulationStates.Stopping:
-						throwError = (_state != EmulationStates.Started && _state != EmulationStates.Suspended
-							&& State != EmulationStates.Starting);  // при ошибках при запуске эмуляции состояние может быть Starting
-						break;
-					case EmulationStates.Starting:
-						throwError = (_state != EmulationStates.Stopped && _state != EmulationStates.Suspended);
-						break;
-					case EmulationStates.Started:
-						throwError = (_state != EmulationStates.Starting);
-						break;
-					case EmulationStates.Suspending:
-						throwError = (_state != EmulationStates.Started);
-						break;
-					case EmulationStates.Suspended:
-						throwError = (_state != EmulationStates.Suspending);
-						break;
-					default:
-						throw new ArgumentOutOfRangeException(nameof(value));
-				}
-
-				if (throwError)
-					throw new InvalidOperationException(LocalizedStrings.Str2189Params.Put(_state, value));
-
-				_state = value;
-
-				try
-				{
-					StateChanged?.Invoke();
-				}
-				catch (Exception ex)
-				{
-					SendOutError(ex);
-				}
-			}
-		}
-
-		/// <summary>
-		/// The event on the emulator state change <see cref="State"/>.
-		/// </summary>
-		public event Action StateChanged;
-
-		/// <summary>
-		/// Has the emulator ended its operation due to end of data, or it was interrupted through the <see cref="IConnector.Disconnect"/>method.
-		/// </summary>
-		public bool IsFinished { get; private set; }
-
-		/// <summary>
-		/// To enable the possibility to give out candles directly into <see cref="ICandleManager"/>. It accelerates operation, but candle change events will not be available. By default it is disabled.
-		/// </summary>
-		public bool UseExternalCandleSource { get; set; }
-
-		/// <summary>
-		/// Clear cache.
-		/// </summary>
-		public override void ClearCache()
-		{
-			base.ClearCache();
-			IsFinished = false;
-		}
-
-		/// <summary>
-		/// To call the <see cref="Connector.Connected"/> event when the first adapter connects to <see cref="Connector.Adapter"/>.
-		/// </summary>
-		protected override bool RaiseConnectedOnFirstAdapter => false;
-
-		/// <summary>
-		/// Disconnect from trading system.
-		/// </summary>
-		protected override void OnDisconnect()
-		{
-			if (State != EmulationStates.Stopped && State != EmulationStates.Stopping)
-				SendEmulationState(EmulationStates.Stopping);
-		}
-
-		/// <summary>
-		/// To release allocated resources. In particular, to disconnect from the trading system via <see cref="Connector.Disconnect"/>.
-		/// </summary>
-		protected override void DisposeManaged()
-		{
-			base.DisposeManaged();
-
-			HistoryMessageAdapter.Dispose();
-		}
-
-		/// <summary>
-		/// To start the emulation.
-		/// </summary>
-		public void Start()
-		{
-			SendEmulationState(EmulationStates.Starting);
-		}
-
-		/// <summary>
-		/// To suspend the emulation.
-		/// </summary>
-		public void Suspend()
-		{
-			SendEmulationState(EmulationStates.Suspending);
-		}
-
-		private void SendEmulationState(EmulationStates state)
-		{
-			SendInMessage(new EmulationStateMessage { State = state });
-		}
-
-		/// <summary>
-		/// To process the message, containing market data.
-		/// </summary>
-		/// <param name="message">The message, containing market data.</param>
-		protected override void OnProcessMessage(Message message)
-		{
 			try
 			{
-				switch (message.Type)
-				{
-					case MessageTypes.Connect:
-					{
-						base.OnProcessMessage(message);
-
-						if (message.Adapter == TransactionAdapter)
-							_initialMoney.ForEach(p => SendPortfolio(p.Key));
-
-						break;
-					}
-
-					case ExtendedMessageTypes.Last:
-					{
-						var lastMsg = (LastMessage)message;
-
-						if (State == EmulationStates.Started)
-						{
-							IsFinished = !lastMsg.IsError;
-
-							// все данных пришли без ошибок или в процессе чтения произошла ошибка - начинаем остановку
-							SendEmulationState(EmulationStates.Stopping);
-						}
-
-						if (State == EmulationStates.Stopping)
-						{
-							// тестирование было отменено и пришли все ранее прочитанные данные
-							SendEmulationState(EmulationStates.Stopped);
-						}
-
-						break;
-					}
-
-					case ExtendedMessageTypes.Clearing:
-						break;
-
-					case ExtendedMessageTypes.EmulationState:
-						ProcessEmulationStateMessage(((EmulationStateMessage)message).State);
-						break;
-
-					case MessageTypes.Security:
-					case MessageTypes.Board:
-					case MessageTypes.Level1Change:
-					case MessageTypes.QuoteChange:
-					case MessageTypes.Time:
-					case MessageTypes.CandlePnF:
-					case MessageTypes.CandleRange:
-					case MessageTypes.CandleRenko:
-					case MessageTypes.CandleTick:
-					case MessageTypes.CandleTimeFrame:
-					case MessageTypes.CandleVolume:
-					case MessageTypes.Execution:
-					{
-						if (message.Adapter == MarketDataAdapter)
-							TransactionAdapter.SendInMessage(message);
-						else if (message.Adapter == TransactionAdapter)
-						{
-							var candleMsg = message as CandleMessage;
-
-							if (candleMsg != null)
-							{
-								if (!UseExternalCandleSource)
-									break;
-
-								var serieses = _series.TryGetValue(Tuple.Create(candleMsg.SecurityId, candleMsg.Type.ToCandleMarketDataType(), candleMsg.Arg));
-
-								if (serieses == null)
-										break;
-
-								foreach (var series in serieses)
-								{
-									_newCandles?.Invoke(series, new[] { candleMsg.ToCandle(series) });
-
-									if (candleMsg.IsFinished)
-										_stopped?.Invoke(series);
-								}
-
-								break;
-							}
-						}
-
-						base.OnProcessMessage(message);
-						break;
-					}
-
-					default:
-					{
-						if (State == EmulationStates.Stopping && message.Type != MessageTypes.Disconnect)
-							break;
-
-						base.OnProcessMessage(message);
-						break;
-					}
-				}
+				StateChanged?.Invoke();
+				StateChanged2?.Invoke(value);
 			}
 			catch (Exception ex)
 			{
 				SendOutError(ex);
-				SendEmulationState(EmulationStates.Stopping);
 			}
 		}
+	}
 
-		private void ProcessEmulationStateMessage(EmulationStates newState)
+	/// <summary>
+	/// Call <see cref="Connector.Disconnect"/> when any <see cref="Subscription"/> failed.
+	/// </summary>
+	public bool StopOnSubscriptionError { get; set; }
+
+	private InMemoryMessageChannel InMemChannel
+		=> (Adapter.InnerAdapters.FirstOrDefault() as EmulationMessageAdapter)?.InChannel as InMemoryMessageChannel;
+
+	/// <summary>
+	/// <see cref="InMemoryMessageChannel.MaxMessageCount"/>
+	/// </summary>
+	public int MaxMessageCount
+	{
+		get => InMemChannel?.MaxMessageCount ?? -1;
+		set
 		{
-			this.AddInfoLog(LocalizedStrings.Str1121Params, State, newState);
+			var channel = InMemChannel;
 
-			State = newState;
+			if (channel is not null)
+				channel.MaxMessageCount = value;
+		}
+	}
 
-			switch (newState)
+	/// <inheritdoc/>
+	protected override void RaiseSubscriptionFailed(Subscription subscription, Exception error, bool isSubscribe)
+	{
+		base.RaiseSubscriptionFailed(subscription, error, isSubscribe);
+
+		if (StopOnSubscriptionError && subscription.SubscriptionMessage is MarketDataMessage)
+			Disconnect();
+	}
+
+	/// <summary>
+	/// The event on the emulator state change <see cref="State"/>.
+	/// </summary>
+	[Obsolete("Use StateChanged2 event.")]
+	public event Action StateChanged;
+
+	/// <summary>
+	/// The event on the emulator state change <see cref="State"/>.
+	/// </summary>
+	public event Action<ChannelStates> StateChanged2;
+
+	/// <summary>
+	/// Progress changed event.
+	/// </summary>
+	public event Action<int> ProgressChanged;
+
+	private DateTimeOffset _startTime;
+	private DateTimeOffset _stopTime;
+	private DateTimeOffset _nextTime;
+	private long _stepTicks;
+	private int _progress;
+
+	private void OnMarketTimeChanged(TimeSpan diff)
+	{
+		if (_stepTicks == default)
+			return;
+
+		if (CurrentTime < _nextTime && CurrentTime < _stopTime)
+			return;
+
+		_nextTime = _nextTime.AddTicks(_stepTicks);
+		ProgressChanged?.Invoke(++_progress);
+	}
+
+	/// <summary>
+	/// Has the emulator ended its operation due to end of data, or it was interrupted through the <see cref="IConnector.Disconnect"/>method.
+	/// </summary>
+	public bool IsFinished { get; private set; }
+	
+	/// <inheritdoc />
+	public override TimeSpan MarketTimeChangedInterval
+	{
+		set
+		{
+			base.MarketTimeChangedInterval = value;
+			HistoryMessageAdapter.MarketTimeChangedInterval = value;
+		}
+	}
+
+	/// <summary>
+	/// Commission rules.
+	/// </summary>
+	[Obsolete("Use EmulationSettings.CommissionRules property.")]
+	public IEnumerable<ICommissionRule> CommissionRules { get; set; }
+
+	/// <summary>
+	/// <see cref="EmulationMessageAdapter.Settings"/>
+	/// </summary>
+	public MarketEmulatorSettings EmulationSettings => EmulationAdapter.Settings;
+
+	/// <inheritdoc />
+	public override void ClearCache()
+	{
+		base.ClearCache();
+
+		IsFinished = false;
+	}
+
+	/// <inheritdoc />
+	protected override void OnConnect()
+	{
+		_startTime = HistoryMessageAdapter.StartDate;
+		_stopTime = HistoryMessageAdapter.StopDate;
+
+		_stepTicks = (_stopTime - _startTime).Ticks / 100;
+
+		_nextTime = _startTime.AddTicks(_stepTicks);
+		_progress = default;
+
+		_stopPending = false;
+
+		base.OnConnect();
+	}
+
+	/// <inheritdoc />
+	protected override void OnDisconnect()
+	{
+		if (/*EmulationAdapter.OwnInnerAdapter && */State == ChannelStates.Suspended)
+			EmulationAdapter.InChannel.Resume();
+
+		if (State is not ChannelStates.Stopped and not ChannelStates.Stopping)
+			SendEmulationState(ChannelStates.Stopping);
+		else
+			_stopPending = true;
+	}
+
+	private void OnDisconnected()
+	{
+		State = ChannelStates.Stopped;
+	}
+
+	/// <inheritdoc />
+	protected override void DisposeManaged()
+	{
+		MarketTimeChanged -= OnMarketTimeChanged;
+		Disconnected -= OnDisconnected;
+
+		base.DisposeManaged();
+
+		MarketDataAdapter.DoDispose();
+	}
+
+	/// <summary>
+	/// To start the emulation.
+	/// </summary>
+	public void Start()
+	{
+		var isResuming = /*EmulationAdapter.OwnInnerAdapter && */State == ChannelStates.Suspended;
+
+		if (isResuming)
+			EmulationAdapter.InChannel.Resume();
+
+		SendEmulationState(ChannelStates.Starting);
+
+		if (!isResuming)
+		{
+			foreach (var rule in EmulationSettings.CommissionRules)
+				SendInMessage(new CommissionRuleMessage { Rule = rule });
+		}
+	}
+
+	/// <summary>
+	/// To suspend the emulation.
+	/// </summary>
+	public void Suspend()
+	{
+		SendEmulationState(ChannelStates.Suspending);
+	}
+
+	private void SendEmulationState(ChannelStates state)
+	{
+		var message = new EmulationStateMessage { State = state };
+
+		if (EmulationAdapter.OwnInnerAdapter)
+			SendInMessage(message);
+		else
+			ProcessEmulationStateMessage(message);
+	}
+
+	/// <inheritdoc />
+	protected override void OnProcessMessage(Message message)
+	{
+		try
+		{
+			switch (message.Type)
 			{
-				case EmulationStates.Stopping:
+				case MessageTypes.EmulationState:
+					ProcessEmulationStateMessage((EmulationStateMessage)message);
+					break;
+
+				default:
 				{
-					SendEmulationState(EmulationStates.Stopped);
+					base.OnProcessMessage(message);
 					break;
 				}
-
-				case EmulationStates.Stopped:
-				{
-					// change ConnectionState to Disconnecting
-					if (ConnectionState != ConnectionStates.Disconnecting)
-						Disconnect();
-
-					SendInMessage(new DisconnectMessage());
-					break;
-				}
-
-				case EmulationStates.Starting:
-				{
-					SendEmulationState(EmulationStates.Started);
-					break;
-				}
 			}
 		}
-
-		private void SendPortfolio(Portfolio portfolio)
+		catch (Exception ex)
 		{
-			SendInMessage(portfolio.ToMessage());
-
-			var money = _initialMoney[portfolio];
-
-			SendInMessage(
-				EmulationAdapter
-					.CreatePortfolioChangeMessage(portfolio.Name)
-						.Add(PositionChangeTypes.BeginValue, money)
-						.Add(PositionChangeTypes.CurrentValue, money)
-						.Add(PositionChangeTypes.BlockedValue, 0m));
+			SendOutError(ex);
+			Disconnect();
 		}
+	}
 
-		//private void InitOrderLogBuilders(DateTime loadDate)
-		//{
-		//	if (StorageRegistry == null || !MarketEmulator.Settings.UseMarketDepth)
-		//		return;
+	private void ProcessEmulationStateMessage(EmulationStateMessage message)
+	{
+		State = message.State;
 
-		//	foreach (var security in RegisteredMarketDepths)
-		//	{
-		//		var builder = _orderLogBuilders.TryGetValue(security);
-
-		//		if (builder == null)
-		//			continue;
-
-		//		// стакан из ОЛ строиться начиная с 18.45 предыдущей торговой сессии
-		//		var olDate = loadDate.Date;
-
-		//		do
-		//		{
-		//			olDate -= TimeSpan.FromDays(1);
-		//		}
-		//		while (!ExchangeBoard.Forts.WorkingTime.IsTradeDate(olDate));
-
-		//		olDate += new TimeSpan(18, 45, 0);
-
-		//		foreach (var item in StorageRegistry.GetOrderLogStorage(security, Drive).Load(olDate, loadDate - TimeSpan.FromTicks(1)))
-		//		{
-		//			builder.Update(item);
-		//		}
-		//	}
-		//}
-
-		///// <summary>
-		///// Найти инструменты, соответствующие фильтру <paramref name="criteria"/>.
-		///// </summary>
-		///// <param name="criteria">Инструмент, поля которого будут использоваться в качестве фильтра.</param>
-		///// <returns>Найденные инструменты.</returns>
-		//public override IEnumerable<Security> Lookup(Security criteria)
-		//{
-		//	var securities = _historyAdapter.SecurityProvider.Lookup(criteria);
-
-		//	if (State == EmulationStates.Started)
-		//	{
-		//		foreach (var security in securities)
-		//			SendSecurity(security);	
-		//	}
-
-		//	return securities;
-		//}
-
-		/// <summary>
-		/// Subscribe on the portfolio changes.
-		/// </summary>
-		/// <param name="portfolio">Portfolio for subscription.</param>
-		protected override void OnRegisterPortfolio(Portfolio portfolio)
+		switch (State)
 		{
-			_initialMoney.TryAdd(portfolio, portfolio.BeginValue);
-
-			if (State == EmulationStates.Started)
-				SendPortfolio(portfolio);
-		}
-
-		/// <summary>
-		/// Register historical data.
-		/// </summary>
-		/// <param name="security">Instrument.</param>
-		/// <param name="dataType">Data type.</param>
-		/// <param name="arg">The parameter associated with the <paramref name="dataType"/> type. For example, <see cref="Candle.Arg"/>.</param>
-		/// <param name="getMessages">Historical data source.</param>
-		public void RegisterHistorySource(Security security, MarketDataTypes dataType, object arg, Func<DateTimeOffset, IEnumerable<Message>> getMessages)
-		{
-			SendInHistorySourceMessage(security, dataType, arg, getMessages);
-		}
-
-		/// <summary>
-		/// Unregister the subscription, previously made by <see cref="RegisterHistorySource"/>.
-		/// </summary>
-		/// <param name="security">Instrument.</param>
-		/// <param name="dataType">Data type.</param>
-		/// <param name="arg">The parameter associated with the <paramref name="dataType"/> type. For example, <see cref="Candle.Arg"/>.</param>
-		public void UnRegisterHistorySource(Security security, MarketDataTypes dataType, object arg)
-		{
-			SendInHistorySourceMessage(security, dataType, arg, null);
-		}
-
-		private void SendInHistorySourceMessage(Security security, MarketDataTypes dataType, object arg, Func<DateTimeOffset, IEnumerable<Message>> getMessages)
-		{
-			var isSubscribe = getMessages != null;
-
-			if (isSubscribe)
+			case ChannelStates.Stopping:
 			{
-				if (_historySourceSubscriptions.ChangeSubscribers(Tuple.Create(security.ToSecurityId(), dataType, arg), true) != 1)
-					return;
-			}
-			else
-			{
-				if (_historySourceSubscriptions.ChangeSubscribers(Tuple.Create(security.ToSecurityId(), dataType, arg), false) != 0)
-					return;
+				IsFinished = message.IsOk();
+				
+				// change ConnectionState to Disconnecting
+				if (ConnectionState != ConnectionStates.Disconnecting)
+					Disconnect();
+
+				// base method cannot be invoked from OnDisconnect HistConnector.OnDisconnect
+				base.OnDisconnect();
+
+				break;
 			}
 
-			SendInMessage(new HistorySourceMessage
+			case ChannelStates.Starting:
 			{
-				IsSubscribe = isSubscribe,
-				SecurityId = security.ToSecurityId(),
-				DataType = dataType,
-				Arg = arg,
-				GetMessages = getMessages
-			});
-		}
-
-		IEnumerable<Range<DateTimeOffset>> IExternalCandleSource.GetSupportedRanges(CandleSeries series)
-		{
-			if (!UseExternalCandleSource)
-				yield break;
-
-			var securityId = series.Security.ToSecurityId();
-			var messageType = series.CandleType.ToCandleMessageType();
-			var dataType = messageType.ToCandleMarketDataType();
-
-			if (_historySourceSubscriptions.ContainsKey(Tuple.Create(securityId, dataType, series.Arg)))
-			{
-				yield return new Range<DateTimeOffset>(DateTimeOffset.MinValue, DateTimeOffset.MaxValue);
-				yield break;
+				State = ChannelStates.Started;
+				break;
 			}
 
-			var types = HistoryMessageAdapter.Drive.GetAvailableDataTypes(securityId, HistoryMessageAdapter.StorageFormat);
-
-			foreach (var tuple in types)
+			case ChannelStates.Suspending:
 			{
-				if (tuple.MessageType != messageType || !tuple.Arg.Equals(series.Arg))
-					continue;
-
-				var dates = HistoryMessageAdapter.StorageRegistry.GetCandleMessageStorage(tuple.MessageType, series.Security, series.Arg, HistoryMessageAdapter.Drive, HistoryMessageAdapter.StorageFormat).Dates.ToArray();
-
-				if (dates.Any())
-					yield return new Range<DateTimeOffset>(dates.First().ApplyTimeZone(TimeZoneInfo.Utc), dates.Last().ApplyTimeZone(TimeZoneInfo.Utc));
-
+				State = ChannelStates.Suspended;
 				break;
 			}
 		}
 
-		private Action<CandleSeries, IEnumerable<Candle>> _newCandles;
+		if (_stopPending && (State is ChannelStates.Started or ChannelStates.Suspended))
+			ProcessEmulationStateMessage(new() { State = ChannelStates.Stopping });
+	}
 
-		event Action<CandleSeries, IEnumerable<Candle>> IExternalCandleSource.NewCandles
+	/// <summary>
+	/// Register historical data source.
+	/// </summary>
+	/// <param name="security">Instrument. If passed <see langword="null"/> the source will be applied for all subscriptions.</param>
+	/// <param name="dataType">Data type.</param>
+	/// <param name="getMessages">Historical data source.</param>
+	/// <returns>Subscription.</returns>
+	[Obsolete("Uses custom adapter implementation.")]
+	public Subscription RegisterHistorySource(Security security, DataType dataType, Func<DateTimeOffset, IEnumerable<Message>> getMessages)
+	{
+		var subscription = new Subscription(new HistorySourceMessage
 		{
-			add { _newCandles += value; }
-			remove { _newCandles -= value; }
-		}
+			IsSubscribe = true,
+			SecurityId = security?.ToSecurityId(copyExtended: true) ?? default,
+			DataType2 = dataType,
+			GetMessages = getMessages
+		}, security);
 
-		private Action<CandleSeries> _stopped;
+		Subscribe(subscription);
 
-		event Action<CandleSeries> IExternalCandleSource.Stopped
-		{
-			add { _stopped += value; }
-			remove { _stopped -= value; }
-		}
+		return subscription;
+	}
 
-		void IExternalCandleSource.SubscribeCandles(CandleSeries series, DateTimeOffset from, DateTimeOffset to)
-		{
-			var securityId = GetSecurityId(series.Security);
-			var dataType = series.CandleType.ToCandleMessageType().ToCandleMarketDataType();
-			var key = Tuple.Create(securityId, dataType, series.Arg);
-
-			_series.SafeAdd(key).Add(series);
-
-			if (!_historySourceSubscriptions.ContainsKey(key))
-			{
-				if (_subscribedCandles.ChangeSubscribers(key, true) != 1)
-					return;
-
-				MarketDataAdapter.SendInMessage(new MarketDataMessage
-				{
-					//SecurityId = securityId,
-					DataType = dataType,
-					Arg = series.Arg,
-					IsSubscribe = true,
-				}.FillSecurityInfo(this, series.Security));
-			}
-		}
-
-		void IExternalCandleSource.UnSubscribeCandles(CandleSeries series)
-		{
-			var securityId = GetSecurityId(series.Security);
-			var dataType = series.CandleType.ToCandleMessageType().ToCandleMarketDataType();
-			var key = Tuple.Create(securityId, dataType, series.Arg);
-
-			_series.SafeAdd(key).Remove(series);
-
-			if (!_historySourceSubscriptions.ContainsKey(key))
-			{
-				if (_subscribedCandles.ChangeSubscribers(key, false) != 0)
-					return;
-
-				MarketDataAdapter.SendInMessage(new MarketDataMessage
-				{
-					//SecurityId = securityId,
-					DataType = MarketDataTypes.CandleTimeFrame,
-					Arg = series.Arg,
-					IsSubscribe = false,
-				}.FillSecurityInfo(this, series.Security));
-			}
-		}
+	/// <summary>
+	/// Unregister historical data source, previously registered by <see cref="RegisterHistorySource"/>.
+	/// </summary>
+	/// <param name="security">Instrument. If passed <see langword="null"/> the source will be removed for all subscriptions.</param>
+	/// <param name="dataType">Data type.</param>
+	[Obsolete("Uses UnSubscribe method.")]
+	public void UnRegisterHistorySource(Security security, DataType dataType)
+	{
+		var secId = security?.ToSecurityId();
+		
+		var subscription = Subscriptions.FirstOrDefault(s => s.SubscriptionMessage is HistorySourceMessage sourceMsg && sourceMsg.SecurityId == secId && sourceMsg.DataType2 == dataType);
+		
+		if (subscription != null)
+			UnSubscribe(subscription);
+		else
+			this.AddWarningLog(LocalizedStrings.SubscriptionNonExist, dataType);
 	}
 }

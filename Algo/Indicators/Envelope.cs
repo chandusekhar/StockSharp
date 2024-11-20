@@ -1,151 +1,128 @@
-#region S# License
-/******************************************************************************************
-NOTICE!!!  This program and source code is owned and licensed by
-StockSharp, LLC, www.stocksharp.com
-Viewing or use of this code requires your acceptance of the license
-agreement found at https://github.com/StockSharp/StockSharp/blob/master/LICENSE
-Removal of this comment is a violation of the license agreement.
+﻿namespace StockSharp.Algo.Indicators;
 
-Project: StockSharp.Algo.Indicators.Algo
-File: Envelope.cs
-Created: 2015, 11, 11, 2:32 PM
-
-Copyright 2010 by StockSharp, LLC
-*******************************************************************************************/
-#endregion S# License
-namespace StockSharp.Algo.Indicators
+/// <summary>
+/// Envelope.
+/// </summary>
+/// <remarks>
+/// https://doc.stocksharp.com/topics/api/indicators/list_of_indicators/envelope.html
+/// </remarks>
+[Display(ResourceType = typeof(LocalizedStrings),
+	Name = LocalizedStrings.EnvelopeKey)]
+[Doc("topics/api/indicators/list_of_indicators/envelope.html")]
+public class Envelope : BaseComplexIndicator
 {
-	using System;
-	using System.ComponentModel;
-
-	using Ecng.Serialization;
-
-	using StockSharp.Localization;
+	/// <summary>
+	/// Initializes a new instance of the <see cref="Envelope"/>.
+	/// </summary>
+	public Envelope()
+		: this(new SimpleMovingAverage())
+	{
+	}
 
 	/// <summary>
-	/// Envelope.
+	/// Initializes a new instance of the <see cref="Envelope"/>.
 	/// </summary>
-	[DisplayName("Envelope")]
-	[Description("Envelope.")]
-	public class Envelope : BaseComplexIndicator
+	/// <param name="ma">Middle line.</param>
+	public Envelope(LengthIndicator<decimal> ma)
 	{
-		/// <summary>
-		/// Initializes a new instance of the <see cref="Envelope"/>.
-		/// </summary>
-		public Envelope()
-			: this(new SimpleMovingAverage())
+		AddInner(Middle = ma);
+		AddInner(Upper = ma.TypedClone());
+		AddInner(Lower = ma.TypedClone());
+
+		Upper.Name = nameof(Upper);
+		Lower.Name = nameof(Lower);
+	}
+
+	/// <summary>
+	/// Middle line.
+	/// </summary>
+	[Browsable(false)]
+	public LengthIndicator<decimal> Middle { get; }
+
+	/// <summary>
+	/// Upper line.
+	/// </summary>
+	[Browsable(false)]
+	public LengthIndicator<decimal> Upper { get; }
+
+	/// <summary>
+	/// Lower line.
+	/// </summary>
+	[Browsable(false)]
+	public LengthIndicator<decimal> Lower { get; }
+
+	/// <summary>
+	/// Period length. By default equal to 1.
+	/// </summary>
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.PeriodKey,
+		Description = LocalizedStrings.IndicatorPeriodKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public int Length
+	{
+		get => Middle.Length;
+		set
 		{
-		}
-
-		/// <summary>
-		/// Initializes a new instance of the <see cref="Envelope"/>.
-		/// </summary>
-		public Envelope(LengthIndicator<decimal> ma)
-		{
-			InnerIndicators.Add(Middle = ma);
-			InnerIndicators.Add(Upper = (LengthIndicator<decimal>)ma.Clone());
-			InnerIndicators.Add(Lower = (LengthIndicator<decimal>)ma.Clone());
-
-			Upper.Name = "Upper";
-			Lower.Name = "Lower";
-		}
-
-		/// <summary>
-		/// Middle line.
-		/// </summary>
-		[Browsable(false)]
-		public LengthIndicator<decimal> Middle { get; }
-
-		/// <summary>
-		/// Upper line.
-		/// </summary>
-		[Browsable(false)]
-		public LengthIndicator<decimal> Upper { get; }
-
-		/// <summary>
-		/// Lower line.
-		/// </summary>
-		[Browsable(false)]
-		public LengthIndicator<decimal> Lower { get; }
-
-		/// <summary>
-		/// Period length. By default equal to 1.
-		/// </summary>
-		[DisplayNameLoc(LocalizedStrings.Str778Key)]
-		[DescriptionLoc(LocalizedStrings.Str779Key)]
-		[CategoryLoc(LocalizedStrings.GeneralKey)]
-		public virtual int Length
-		{
-			get { return Middle.Length; }
-			set
-			{
-				Middle.Length = Upper.Length = Lower.Length = value;
-				Reset();
-			}
-		}
-
-		private decimal _shift = 0.25m;
-
-		/// <summary>
-		/// The shift width. Specified as percentage from 0 to 1. The default equals to 0.25.
-		/// </summary>
-		[DisplayNameLoc(LocalizedStrings.Str783Key)]
-		[DescriptionLoc(LocalizedStrings.Str784Key)]
-		[CategoryLoc(LocalizedStrings.GeneralKey)]
-		public decimal Shift
-		{
-			get { return _shift; }
-			set
-			{
-				if (value < 0)
-					throw new ArgumentNullException(nameof(value));
-
-				_shift = value;
-				Reset();
-			}
-		}
-
-		/// <summary>
-		/// Whether the indicator is set.
-		/// </summary>
-		public override bool IsFormed => Middle.IsFormed;
-
-		/// <summary>
-		/// To handle the input value.
-		/// </summary>
-		/// <param name="input">The input value.</param>
-		/// <returns>The resulting value.</returns>
-		protected override IIndicatorValue OnProcess(IIndicatorValue input)
-		{
-			var value = (ComplexIndicatorValue)base.OnProcess(input);
-
-			var upper = value.InnerValues[Upper];
-			value.InnerValues[Upper] = upper.SetValue(this, upper.GetValue<decimal>() * (1 + Shift));
-
-			var lower = value.InnerValues[Lower];
-			value.InnerValues[Lower] = lower.SetValue(this, lower.GetValue<decimal>() * (1 - Shift));
-
-			return value;
-		}
-
-		/// <summary>
-		/// Load settings.
-		/// </summary>
-		/// <param name="settings">Settings storage.</param>
-		public override void Load(SettingsStorage settings)
-		{
-			base.Load(settings);
-			Shift = settings.GetValue<decimal>(nameof(Shift));
-		}
-
-		/// <summary>
-		/// Save settings.
-		/// </summary>
-		/// <param name="settings">Settings storage.</param>
-		public override void Save(SettingsStorage settings)
-		{
-			base.Save(settings);
-			settings.SetValue(nameof(Shift), Shift);
+			Middle.Length = Upper.Length = Lower.Length = value;
+			Reset();
 		}
 	}
+
+	private decimal _shift = 0.01m;
+
+	/// <summary>
+	/// The shift width. Specified as percentage from 0 to 1. The default equals to 0.01.
+	/// </summary>
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.ThresholdKey,
+		Description = LocalizedStrings.ThresholdDescKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public decimal Shift
+	{
+		get => _shift;
+		set
+		{
+			if (value < 0)
+				throw new ArgumentNullException(nameof(value));
+
+			_shift = value;
+			Reset();
+		}
+	}
+
+	/// <inheritdoc />
+	protected override bool CalcIsFormed() => Middle.IsFormed;
+
+	/// <inheritdoc />
+	protected override IIndicatorValue OnProcess(IIndicatorValue input)
+	{
+		var value = (ComplexIndicatorValue)base.OnProcess(input);
+
+		var upper = value[Upper];
+		value[Upper] = upper.SetValue(Upper, upper.ToDecimal() * (1 + Shift));
+
+		var lower = value[Lower];
+		value[Lower] = lower.SetValue(Lower, lower.ToDecimal() * (1 - Shift));
+
+		return value;
+	}
+
+	/// <inheritdoc />
+	public override void Load(SettingsStorage storage)
+	{
+		base.Load(storage);
+		Shift = storage.GetValue<decimal>(nameof(Shift));
+	}
+
+	/// <inheritdoc />
+	public override void Save(SettingsStorage storage)
+	{
+		base.Save(storage);
+		storage.SetValue(nameof(Shift), Shift);
+	}
+
+	/// <inheritdoc />
+	public override string ToString() => base.ToString() + " " + Length;
 }

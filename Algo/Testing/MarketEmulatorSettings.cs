@@ -1,512 +1,529 @@
-#region S# License
-/******************************************************************************************
-NOTICE!!!  This program and source code is owned and licensed by
-StockSharp, LLC, www.stocksharp.com
-Viewing or use of this code requires your acceptance of the license
-agreement found at https://github.com/StockSharp/StockSharp/blob/master/LICENSE
-Removal of this comment is a violation of the license agreement.
+namespace StockSharp.Algo.Testing;
 
-Project: StockSharp.Algo.Testing.Algo
-File: MarketEmulatorSettings.cs
-Created: 2015, 11, 11, 2:32 PM
+using StockSharp.Algo.Commissions;
 
-Copyright 2010 by StockSharp, LLC
-*******************************************************************************************/
-#endregion S# License
-namespace StockSharp.Algo.Testing
+/// <summary>
+/// Candle price for execution.
+/// </summary>
+public enum EmulationCandlePrices
 {
-	using System;
-	using System.ComponentModel.DataAnnotations;
-
-	using Ecng.ComponentModel;
-	using Ecng.Serialization;
-
-	using StockSharp.Localization;
-	using StockSharp.BusinessEntities;
-	using StockSharp.Messages;
+	/// <summary>
+	/// Middle price.
+	/// </summary>
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.MiddleKey,
+		Description = LocalizedStrings.MiddlePriceKey)]
+	Middle,
 
 	/// <summary>
-	/// Settings of exchange emulator.
+	/// Open price.
 	/// </summary>
-	public class MarketEmulatorSettings : NotifiableObject, IPersistable
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.OpenPriceKey,
+		Description = LocalizedStrings.CandleOpenPriceKey)]
+	Open,
+
+	/// <summary>
+	/// High price.
+	/// </summary>
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.HighestPriceKey,
+		Description = LocalizedStrings.HighPriceOfCandleKey)]
+	High,
+
+	/// <summary>
+	/// Low price.
+	/// </summary>
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.LowestPriceKey,
+		Description = LocalizedStrings.LowPriceOfCandleKey)]
+	Low,
+
+	/// <summary>
+	/// Close price.
+	/// </summary>
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.ClosingPriceKey,
+		Description = LocalizedStrings.ClosePriceOfCandleKey)]
+	Close,
+}
+
+/// <summary>
+/// Settings of exchange emulator.
+/// </summary>
+public class MarketEmulatorSettings : NotifiableObject, IPersistable
+{
+	/// <summary>
+	/// Initializes a new instance of the <see cref="MarketEmulatorSettings"/>.
+	/// </summary>
+	public MarketEmulatorSettings()
 	{
-		/// <summary>
-		/// Initializes a new instance of the <see cref="MarketEmulatorSettings"/>.
-		/// </summary>
-		public MarketEmulatorSettings()
+	}
+
+	private EmulationCandlePrices _candlePrice;
+
+	/// <summary>
+	/// <see cref="EmulationCandlePrices"/>
+	/// </summary>
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.CandleKey,
+		Description = LocalizedStrings.CandleExecPriceKey,
+		GroupName = LocalizedStrings.BacktestExtraKey,
+		Order = 200)]
+	public EmulationCandlePrices CandlePrice
+	{
+		get => _candlePrice;
+		set
 		{
-			DepthExpirationTime = TimeSpan.FromDays(1);
-			MatchOnTouch = true;
-			IsSupportAtomicReRegister = true;
+			if (_candlePrice == value)
+				return;
+
+			_candlePrice = value;
+			NotifyChanged();
 		}
+	}
 
-		private bool _matchOnTouch;
+	private bool _matchOnTouch = true;
 
-		/// <summary>
-		/// At emulation of clearing by trades, to perform clearing of orders, when trade price touches the order price (is equal to order price), rather than only when the trade price is better than order price. Is On by default (optimistic scenario).
-		/// </summary>
-		[Display(
-			ResourceType = typeof(LocalizedStrings),
-			Name = LocalizedStrings.Str1176Key,
-			Description = LocalizedStrings.Str1177Key,
-			GroupName = LocalizedStrings.Str1175Key,
-			Order = 0)]
-		public bool MatchOnTouch
+	/// <summary>
+	/// At emulation of clearing by trades, to perform clearing of orders, when trade price touches the order price (is equal to order price), rather than only when the trade price is better than order price. Is On by default (optimistic scenario).
+	/// </summary>
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.MatchOnTouchKey,
+		Description = LocalizedStrings.MatchOnTouchDescKey,
+		GroupName = LocalizedStrings.BacktestExtraKey,
+		Order = 201)]
+	public bool MatchOnTouch
+	{
+		get => _matchOnTouch;
+		set
 		{
-			get { return _matchOnTouch; }
-			set
-			{
-				if (_matchOnTouch == value)
-					return;
+			if (_matchOnTouch == value)
+				return;
 
-				_matchOnTouch = value;
-				NotifyChanged(nameof(MatchOnTouch));
-			}
+			_matchOnTouch = value;
+			NotifyChanged();
 		}
+	}
 
-		private TimeSpan _depthExpirationTime;
+	private double _failing;
 
-		/// <summary>
-		/// The maximal time, during which the order book is in the emulator, If no renewal during this time, the order book is deleted, This feature may be used to remove old order books if the are holes in data. By default is equal to 1 day.
-		/// </summary>
-		[Display(
-			ResourceType = typeof(LocalizedStrings),
-			Name = LocalizedStrings.Str1178Key,
-			Description = LocalizedStrings.Str1179Key,
-			GroupName = LocalizedStrings.Str1175Key,
-			Order = 1)]
-		public TimeSpan DepthExpirationTime
+	/// <summary>
+	/// The percentage value of new orders registration error. The value may be from 0 (not a single error) to 100. By default is Off.
+	/// </summary>
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.ErrorPercentKey,
+		Description = LocalizedStrings.ErrorPercentDescKey,
+		GroupName = LocalizedStrings.BacktestExtraKey,
+		Order = 202)]
+	public double Failing
+	{
+		get => _failing;
+		set
 		{
-			get { return _depthExpirationTime; }
-			set
-			{
-				if (_depthExpirationTime == value)
-					return;
+			if (value < 0 || value > 100)
+				throw new ArgumentOutOfRangeException(nameof(value), value, LocalizedStrings.InvalidValue);
 
-				_depthExpirationTime = value;
-				NotifyChanged(nameof(DepthExpirationTime));
-			}
+			_failing = value;
+			NotifyChanged();
 		}
+	}
 
-		private double _failing;
+	private TimeSpan _latency;
 
-		/// <summary>
-		/// The percentage value of new orders registration error. The value may be from 0 (not a single error) to 100. By default is Off.
-		/// </summary>
-		[Display(
-			ResourceType = typeof(LocalizedStrings),
-			Name = LocalizedStrings.Str1180Key,
-			Description = LocalizedStrings.Str1181Key,
-			GroupName = LocalizedStrings.Str1175Key,
-			Order = 2)]
-		public double Failing
+	/// <summary>
+	/// The minimal value of the registered orders delay. By default, it is <see cref="TimeSpan.Zero"/>, which means instant adoption of registered orders by exchange.
+	/// </summary>
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.LatencyKey,
+		Description = LocalizedStrings.LatencyDescKey,
+		GroupName = LocalizedStrings.BacktestExtraKey,
+		Order = 203)]
+	public TimeSpan Latency
+	{
+		get => _latency;
+		set
 		{
-			get { return _failing; }
-			set
-			{
-				if (value < 0)
-					throw new ArgumentOutOfRangeException(nameof(value), value, LocalizedStrings.Str1182);
+			if (value < TimeSpan.Zero)
+				throw new ArgumentOutOfRangeException(nameof(value), value, LocalizedStrings.InvalidValue);
 
-				if (value > 100)
-					throw new ArgumentOutOfRangeException(nameof(value), value, LocalizedStrings.Str1183);
-
-				_failing = value;
-				NotifyChanged(nameof(Failing));
-			}
+			_latency = value;
+			NotifyChanged();
 		}
+	}
 
-		private TimeSpan _latency;
+	private long _initialOrderId;
 
-		/// <summary>
-		/// The minimal value of the registered orders delay. By default, it is <see cref="TimeSpan.Zero"/>, which means instant adoption of registered orders by  exchange.
-		/// </summary>
-		[Display(
-			ResourceType = typeof(LocalizedStrings),
-			Name = LocalizedStrings.Str161Key,
-			Description = LocalizedStrings.Str1184Key,
-			GroupName = LocalizedStrings.Str1175Key,
-			Order = 3)]
-		public TimeSpan Latency
+	/// <summary>
+	/// The number, starting at which the emulator will generate identifiers for orders <see cref="Order.Id"/>.
+	/// </summary>
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.OrderIdKey,
+		Description = LocalizedStrings.OrderIdGenerationKey,
+		GroupName = LocalizedStrings.BacktestExtraKey,
+		Order = 206)]
+	public long InitialOrderId
+	{
+		get => _initialOrderId;
+		set
 		{
-			get { return _latency; }
-			set
-			{
-				if (value < TimeSpan.Zero)
-					throw new ArgumentOutOfRangeException(nameof(value), value, LocalizedStrings.Str1185);
-
-				_latency = value;
-				NotifyChanged(nameof(Latency));
-			}
+			_initialOrderId = value;
+			NotifyChanged();
 		}
+	}
 
-		private bool _isSupportAtomicReRegister;
+	private long _initialTradeId;
 
-		/// <summary>
-		/// Gets a value indicating whether the re-registration orders as a single transaction. By default is enabled.
-		/// </summary>
-		[Display(
-			ResourceType = typeof(LocalizedStrings),
-			Name = LocalizedStrings.ReregisteringKey,
-			Description = LocalizedStrings.Str60Key,
-			GroupName = LocalizedStrings.Str1175Key,
-			Order = 4)]
-		public bool IsSupportAtomicReRegister
+	/// <summary>
+	/// The number, starting at which the emulator will generate identifiers fir trades <see cref="Trade.Id"/>.
+	/// </summary>
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.TradeIdKey,
+		Description = LocalizedStrings.TradeIdGenerationKey,
+		GroupName = LocalizedStrings.BacktestExtraKey,
+		Order = 207)]
+	public long InitialTradeId
+	{
+		get => _initialTradeId;
+		set
 		{
-			get { return _isSupportAtomicReRegister; }
-			set
-			{
-				_isSupportAtomicReRegister = value;
-				NotifyChanged(nameof(_isSupportAtomicReRegister));
-			}
+			_initialTradeId = value;
+			NotifyChanged();
 		}
+	}
 
-		private TimeSpan _bufferTime;
+	private int _spreadSize = 2;
 
-		/// <summary>
-		/// Responses shall be sent in intervals by whole package. The network delay and bufferized operation of exchange are emulated. The default is 0 ms.
-		/// </summary>
-		[Display(
-			ResourceType = typeof(LocalizedStrings),
-			Name = LocalizedStrings.Str1186Key,
-			Description = LocalizedStrings.Str1187Key,
-			GroupName = LocalizedStrings.Str1175Key,
-			Order = 5)]
-		public TimeSpan BufferTime
+	/// <summary>
+	/// The size of spread in price increments. It used at determination of spread for generation of order book from tick trades. By default equals to 2.
+	/// </summary>
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.SpreadKey,
+		Description = LocalizedStrings.SpreadSizeDescKey,
+		GroupName = LocalizedStrings.BacktestExtraKey,
+		Order = 209)]
+	public int SpreadSize
+	{
+		get => _spreadSize;
+		set
 		{
-			get { return _bufferTime; }
-			set
-			{
-				if (value < TimeSpan.Zero)
-					throw new ArgumentOutOfRangeException(nameof(value), value, LocalizedStrings.Str940);
+			if (value < 1)
+				throw new ArgumentOutOfRangeException(nameof(value), value, LocalizedStrings.InvalidValue);
 
-				_bufferTime = value;
-				NotifyChanged(nameof(BufferTime));
-			}
+			_spreadSize = value;
+			NotifyChanged();
 		}
+	}
 
-		//private TimeSpan? _useCandlesTimeFrame;
+	private int _maxDepth = 5;
 
-		///// <summary>
-		///// Использовать свечи с заданным тайм-фреймом. Если тайм-фрейм равен <see langword="null"/>, свечи не используются.
-		///// </summary>
-		//[CategoryLoc(LocalizedStrings.Str1174Key)]
-		//[PropertyOrder(10)]
-		//[DisplayNameLoc(LocalizedStrings.CandlesKey)]
-		//[DescriptionLoc(LocalizedStrings.Str1188Key)]
-		//[Nullable]
-		//[DefaultValue(typeof(TimeSpan), "00:05:00")]
-		//public TimeSpan? UseCandlesTimeFrame
-		//{
-		//	get { return _useCandlesTimeFrame; }
-		//	set
-		//	{
-		//		if (value <= TimeSpan.Zero)
-		//			throw new ArgumentOutOfRangeException(nameof(value), value, LocalizedStrings.Str1189);
-
-		//		_useCandlesTimeFrame = value;
-		//		NotifyChanged(nameof(UseCandlesTimeFrame));
-		//	}
-		//}
-
-		private long _initialOrderId;
-
-		/// <summary>
-		/// The number, starting at which the emulator will generate identifiers for orders <see cref="Order.Id"/>.
-		/// </summary>
-		[Display(
-			ResourceType = typeof(LocalizedStrings),
-			Name = LocalizedStrings.Str1190Key,
-			Description = LocalizedStrings.Str1191Key,
-			GroupName = LocalizedStrings.Str1175Key,
-			Order = 6)]
-		public long InitialOrderId
+	/// <summary>
+	/// The maximal depth of order book, which will be generated from ticks. It used, if there is no order book history. By default equals to 5.
+	/// </summary>
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.DepthOfBookKey,
+		Description = LocalizedStrings.DepthOfBookDescKey,
+		GroupName = LocalizedStrings.BacktestExtraKey,
+		Order = 210)]
+	public int MaxDepth
+	{
+		get => _maxDepth;
+		set
 		{
-			get { return _initialOrderId; }
-			set
-			{
-				_initialOrderId = value;
-				NotifyChanged(nameof(InitialOrderId));
-			}
+			if (value < 1)
+				throw new ArgumentOutOfRangeException(nameof(value), value, LocalizedStrings.InvalidValue);
+
+			_maxDepth = value;
+			NotifyChanged();
 		}
+	}
 
-		private long _initialTradeId;
+	private TimeSpan _portfolioRecalcInterval = TimeSpan.Zero;
 
-		/// <summary>
-		/// The number, starting at which the emulator will generate identifiers fir trades <see cref="Trade.Id"/>.
-		/// </summary>
-		[Display(
-			ResourceType = typeof(LocalizedStrings),
-			Name = LocalizedStrings.Str1192Key,
-			Description = LocalizedStrings.Str1193Key,
-			GroupName = LocalizedStrings.Str1175Key,
-			Order = 7)]
-		public long InitialTradeId
+	/// <summary>
+	/// The interval for recalculation of data on portfolios. If interval equals <see cref="TimeSpan.Zero"/>, recalculation is not performed.
+	/// </summary>
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.PortfoliosIntervalKey,
+		Description = LocalizedStrings.PortfoliosIntervalDescKey,
+		GroupName = LocalizedStrings.BacktestExtraKey,
+		Order = 212)]
+	public TimeSpan PortfolioRecalcInterval
+	{
+		get => _portfolioRecalcInterval;
+		set
 		{
-			get { return _initialTradeId; }
-			set
-			{
-				_initialTradeId = value;
-				NotifyChanged(nameof(InitialTradeId));
-			}
+			if (value < TimeSpan.Zero)
+				throw new ArgumentOutOfRangeException(nameof(value), value, LocalizedStrings.InvalidValue);
+
+			_portfolioRecalcInterval = value;
+			NotifyChanged();
 		}
+	}
 
-		private long _initialTransactionId;
+	private bool _convertTime;
 
-		/// <summary>
-		/// The number, starting at which the emulator will generate numbers for order trades <see cref="Order.TransactionId"/>.
-		/// </summary>
-		[Display(
-			ResourceType = typeof(LocalizedStrings),
-			Name = LocalizedStrings.TransactionKey,
-			Description = LocalizedStrings.Str1194Key,
-			GroupName = LocalizedStrings.Str1175Key,
-			Order = 8)]
-		public long InitialTransactionId
+	/// <summary>
+	/// To convert time for orders and trades into exchange time. By default, it is disabled.
+	/// </summary>
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.ConvertTimeKey,
+		Description = LocalizedStrings.ConvertTimeDescKey,
+		GroupName = LocalizedStrings.BacktestExtraKey,
+		Order = 213)]
+	public bool ConvertTime
+	{
+		get => _convertTime;
+		set
 		{
-			get { return _initialTransactionId; }
-			set
-			{
-				_initialTransactionId = value;
-				NotifyChanged(nameof(InitialTransactionId));
-			}
+			_convertTime = value;
+			NotifyChanged();
 		}
+	}
 
-		private int _spreadSize = 2;
+	private TimeZoneInfo _timeZone;
 
-		/// <summary>
-		/// The size of spread in price increments. It used at determination of spread for generation of order book from tick trades. By default equals to 2.
-		/// </summary>
-		[Display(
-			ResourceType = typeof(LocalizedStrings),
-			Name = LocalizedStrings.Str1195Key,
-			Description = LocalizedStrings.Str1196Key,
-			GroupName = LocalizedStrings.Str1175Key,
-			Order = 9)]
-		public int SpreadSize
+	/// <summary>
+	/// Information about the time zone where the exchange is located.
+	/// </summary>
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.TimeZoneKey,
+		Description = LocalizedStrings.BoardTimeZoneKey,
+		GroupName = LocalizedStrings.BacktestExtraKey,
+		Order = 214)]
+	public TimeZoneInfo TimeZone
+	{
+		get => _timeZone;
+		set
 		{
-			get { return _spreadSize; }
-			set
-			{
-				if (value < 1)
-					throw new ArgumentOutOfRangeException();
-
-				_spreadSize = value;
-				NotifyChanged(nameof(SpreadSize));
-			}
+			_timeZone = value;
+			NotifyChanged();
 		}
+	}
 
-		private int _maxDepth = 5;
+	private Unit _priceLimitOffset = new(40, UnitTypes.Percent);
 
-		/// <summary>
-		/// The maximal depth of order book, which will be generated from ticks. It used, if there is no order book history. By default equals to 5.
-		/// </summary>
-		[Display(
-			ResourceType = typeof(LocalizedStrings),
-			Name = LocalizedStrings.Str1197Key,
-			Description = LocalizedStrings.Str1198Key,
-			GroupName = LocalizedStrings.Str1175Key,
-			Order = 10)]
-		public int MaxDepth
+	/// <summary>
+	/// The price shift from the previous trade, determining boundaries of maximal and minimal prices for the next session. Used only if there is no saved information <see cref="Level1ChangeMessage"/>. By default, it equals to 40%.
+	/// </summary>
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.PriceShiftKey,
+		Description = LocalizedStrings.PriceShiftDescKey,
+		GroupName = LocalizedStrings.BacktestExtraKey,
+		Order = 215)]
+	public Unit PriceLimitOffset
+	{
+		get => _priceLimitOffset;
+		set
 		{
-			get { return _maxDepth; }
-			set
-			{
-				if (value < 1)
-					throw new ArgumentOutOfRangeException();
-
-				_maxDepth = value;
-				NotifyChanged(nameof(MaxDepth));
-			}
+			_priceLimitOffset = value ?? throw new ArgumentNullException(nameof(value));
+			NotifyChanged();
 		}
+	}
 
-		private int _volumeMultiplier = 2;
+	private bool _increaseDepthVolume = true;
 
-		/// <summary>
-		/// The number of volume increments, at which the order exceeds the tick trade. It used at testing on tick trades. By default equals to 2.
-		/// </summary>
-		[Display(
-			ResourceType = typeof(LocalizedStrings),
-			Name = LocalizedStrings.Str1199Key,
-			Description = LocalizedStrings.Str1200Key,
-			GroupName = LocalizedStrings.Str1175Key,
-			Order = 11)]
-		public int VolumeMultiplier
+	/// <summary>
+	/// To add the additional volume into order book at registering orders with greater volume. By default, it is enabled.
+	/// </summary>
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.ExtraVolumeKey,
+		Description = LocalizedStrings.ExtraVolumeDescKey,
+		GroupName = LocalizedStrings.BacktestExtraKey,
+		Order = 216)]
+	public bool IncreaseDepthVolume
+	{
+		get => _increaseDepthVolume;
+		set
 		{
-			get { return _volumeMultiplier; }
-			set
-			{
-				if (value < 0)
-					throw new ArgumentOutOfRangeException();
-
-				_volumeMultiplier = value;
-				NotifyChanged(nameof(VolumeMultiplier));
-			}
+			_increaseDepthVolume = value;
+			NotifyChanged();
 		}
+	}
 
-		private TimeSpan _portfolioRecalcInterval = TimeSpan.Zero;
+	private bool _checkTradingState;
 
-		/// <summary>
-		/// The interval for recalculation of data on portfolios. If interval equals <see cref="TimeSpan.Zero"/>, recalculation is not performed.
-		/// </summary>
-		[Display(
-			ResourceType = typeof(LocalizedStrings),
-			Name = LocalizedStrings.Str1201Key,
-			Description = LocalizedStrings.Str1202Key,
-			GroupName = LocalizedStrings.Str1175Key,
-			Order = 12)]
-		public TimeSpan PortfolioRecalcInterval
+	/// <summary>
+	/// Check trading state.
+	/// </summary>
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.SessionStateKey,
+		Description = LocalizedStrings.CheckTradingStateKey,
+		GroupName = LocalizedStrings.BacktestExtraKey,
+		Order = 217)]
+	public bool CheckTradingState
+	{
+		get => _checkTradingState;
+		set
 		{
-			get { return _portfolioRecalcInterval; }
-			set
-			{
-				if (value < TimeSpan.Zero)
-					throw new ArgumentOutOfRangeException(nameof(value), value, LocalizedStrings.Str940);
-
-				_portfolioRecalcInterval = value;
-				NotifyChanged(nameof(PortfolioRecalcInterval));
-			}
+			_checkTradingState = value;
+			NotifyChanged();
 		}
+	}
 
-		private bool _convertTime;
+	private bool _checkMoney;
 
-		/// <summary>
-		/// To convert time for orders and trades into exchange time. By default, it is disabled.
-		/// </summary>
-		[Display(
-			ResourceType = typeof(LocalizedStrings),
-			Name = LocalizedStrings.Str1203Key,
-			Description = LocalizedStrings.Str1204Key,
-			GroupName = LocalizedStrings.Str1175Key,
-			Order = 13)]
-		public bool ConvertTime
+	/// <summary>
+	/// Check money balance.
+	/// </summary>
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.MoneyKey,
+		Description = LocalizedStrings.CheckMoneyKey,
+		GroupName = LocalizedStrings.BacktestExtraKey,
+		Order = 218)]
+	public bool CheckMoney
+	{
+		get => _checkMoney;
+		set
 		{
-			get { return _convertTime; }
-			set
-			{
-				_convertTime = value;
-				NotifyChanged(nameof(ConvertTime));
-			}
+			_checkMoney = value;
+			NotifyChanged();
 		}
+	}
 
-		private TimeZoneInfo _timeZone;
+	/// <summary>
+	/// Can have short positions.
+	/// </summary>
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.ShortableKey,
+		Description = LocalizedStrings.ShortableDescKey,
+		GroupName = LocalizedStrings.BacktestExtraKey,
+		Order = 218)]
+	public bool CheckShortable { get; set; }
 
-		/// <summary>
-		/// Information about the time zone where the exchange is located.
-		/// </summary>
-		[Display(
-			ResourceType = typeof(LocalizedStrings),
-			Name = LocalizedStrings.TimeZoneKey,
-			Description = LocalizedStrings.Str68Key,
-			GroupName = LocalizedStrings.Str1175Key,
-			Order = 14)]
-		public TimeZoneInfo TimeZone
+	/// <summary>
+	/// Allow store generated by <see cref="IMarketEmulator"/> messages.
+	/// </summary>
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.StorageKey,
+		//Description = ,
+		GroupName = LocalizedStrings.BacktestExtraKey,
+		Order = 219)]
+	public bool AllowStoreGenerateMessages { get; set; }
+
+	private bool _checkTradableDates;
+
+	/// <summary>
+	/// Check loading dates are they tradable.
+	/// </summary>
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.CheckDatesKey,
+		Description = LocalizedStrings.CheckDatesDescKey,
+		GroupName = LocalizedStrings.BacktestKey,
+		Order = 106)]
+	public bool CheckTradableDates
+	{
+		get => _checkTradableDates;
+		set
 		{
-			get { return _timeZone; }
-			set
-			{
-				_timeZone = value;
-				NotifyChanged(nameof(TimeZone));
-			}
+			_checkTradableDates = value;
+			NotifyPropertyChanged();
 		}
+	}
 
-		private Unit _priceLimitOffset = new Unit(40, UnitTypes.Percent);
+	private IEnumerable<ICommissionRule> _commissionRules = [];
 
-		/// <summary>
-		/// The price shift from the previous trade, determining boundaries of maximal and minimal prices for the next session. Used only if there is no saved information <see cref="Level1ChangeMessage"/>. By default, it equals to 40%.
-		/// </summary>
-		[Display(
-			ResourceType = typeof(LocalizedStrings),
-			Name = LocalizedStrings.Str1205Key,
-			Description = LocalizedStrings.Str1206Key,
-			GroupName = LocalizedStrings.Str1175Key,
-			Order = 15)]
-		public Unit PriceLimitOffset
+	/// <summary>
+	/// Commission rules.
+	/// </summary>
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		GroupName = LocalizedStrings.BacktestKey,
+		Name = LocalizedStrings.CommissionKey,
+		Description = LocalizedStrings.CommissionDescKey,
+		Order = 110)]
+	public IEnumerable<ICommissionRule> CommissionRules
+	{
+		get => _commissionRules;
+		set
 		{
-			get { return _priceLimitOffset; }
-			set
-			{
-				if (value == null)
-					throw new ArgumentNullException(nameof(value));
-
-				_priceLimitOffset = value;
-			}
+			_commissionRules = value ?? throw new ArgumentNullException(nameof(value));
+			NotifyChanged();
 		}
+	}
 
-		private bool _increaseDepthVolume = true;
+	/// <summary>
+	/// To save the state of paper trading parameters.
+	/// </summary>
+	/// <param name="storage">Storage.</param>
+	public virtual void Save(SettingsStorage storage)
+	{
+		storage
+			.Set(nameof(CandlePrice), CandlePrice)
+			.Set(nameof(MatchOnTouch), MatchOnTouch)
+			.Set(nameof(Failing), Failing)
+			.Set(nameof(Latency), Latency)
+			.Set(nameof(InitialOrderId), InitialOrderId)
+			.Set(nameof(InitialTradeId), InitialTradeId)
+			.Set(nameof(SpreadSize), SpreadSize)
+			.Set(nameof(MaxDepth), MaxDepth)
+			.Set(nameof(PortfolioRecalcInterval), PortfolioRecalcInterval)
+			.Set(nameof(ConvertTime), ConvertTime)
+			.Set(nameof(PriceLimitOffset), PriceLimitOffset)
+			.Set(nameof(IncreaseDepthVolume), IncreaseDepthVolume)
+			.Set(nameof(CheckTradingState), CheckTradingState)
+			.Set(nameof(CheckMoney), CheckMoney)
+			.Set(nameof(CheckShortable), CheckShortable)
+			.Set(nameof(AllowStoreGenerateMessages), AllowStoreGenerateMessages)
+			.Set(nameof(CheckTradableDates), CheckTradableDates)
+			.Set(nameof(CommissionRules), CommissionRules.Select(c => c.SaveEntire(false)).ToArray());
 
-		/// <summary>
-		/// To add the additional volume into order book at registering orders with greater volume. By default, it is enabled.
-		/// </summary>
-		[Display(
-			ResourceType = typeof(LocalizedStrings),
-			Name = LocalizedStrings.Str1207Key,
-			Description = LocalizedStrings.Str1208Key,
-			GroupName = LocalizedStrings.Str1175Key,
-			Order = 16)]
-		public bool IncreaseDepthVolume
-		{
-			get { return _increaseDepthVolume; }
-			set
-			{
-				_increaseDepthVolume = value;
-				NotifyChanged(nameof(IncreaseDepthVolume));
-			}
-		}
+		if (TimeZone != null)
+			storage.Set(nameof(TimeZone), TimeZone);
+	}
 
-		/// <summary>
-		/// To save the state of paper trading parameters.
-		/// </summary>
-		/// <param name="storage">Storage.</param>
-		public virtual void Save(SettingsStorage storage)
-		{
-			storage.SetValue(nameof(DepthExpirationTime), DepthExpirationTime);
-			storage.SetValue(nameof(MatchOnTouch), MatchOnTouch);
-			storage.SetValue(nameof(Failing), Failing);
-			storage.SetValue(nameof(Latency), Latency);
-			storage.SetValue(nameof(IsSupportAtomicReRegister), IsSupportAtomicReRegister);
-			storage.SetValue(nameof(BufferTime), BufferTime);
-			//storage.SetValue(nameof(UseCandlesTimeFrame), UseCandlesTimeFrame);
-			storage.SetValue(nameof(InitialOrderId), InitialOrderId);
-			storage.SetValue(nameof(InitialTradeId), InitialTradeId);
-			storage.SetValue(nameof(InitialTransactionId), InitialTransactionId);
-			storage.SetValue(nameof(SpreadSize), SpreadSize);
-			storage.SetValue(nameof(MaxDepth), MaxDepth);
-			storage.SetValue(nameof(VolumeMultiplier), VolumeMultiplier);
-			storage.SetValue(nameof(PortfolioRecalcInterval), PortfolioRecalcInterval);
-			storage.SetValue(nameof(ConvertTime), ConvertTime);
-			storage.SetValue(nameof(PriceLimitOffset), PriceLimitOffset);
-			storage.SetValue(nameof(IncreaseDepthVolume), IncreaseDepthVolume);
+	/// <summary>
+	/// To load the state of paper trading parameters.
+	/// </summary>
+	/// <param name="storage">Storage.</param>
+	public virtual void Load(SettingsStorage storage)
+	{
+		CandlePrice = storage.GetValue(nameof(CandlePrice), CandlePrice);
+		MatchOnTouch = storage.GetValue(nameof(MatchOnTouch), MatchOnTouch);
+		Failing = storage.GetValue(nameof(Failing), Failing);
+		Latency = storage.GetValue(nameof(Latency), Latency);
+		InitialOrderId = storage.GetValue(nameof(InitialOrderId), InitialOrderId);
+		InitialTradeId = storage.GetValue(nameof(InitialTradeId), InitialTradeId);
+		SpreadSize = storage.GetValue(nameof(SpreadSize), SpreadSize);
+		MaxDepth = storage.GetValue(nameof(MaxDepth), MaxDepth);
+		PortfolioRecalcInterval = storage.GetValue(nameof(PortfolioRecalcInterval), PortfolioRecalcInterval);
+		ConvertTime = storage.GetValue(nameof(ConvertTime), ConvertTime);
+		PriceLimitOffset = storage.GetValue(nameof(PriceLimitOffset), PriceLimitOffset);
+		IncreaseDepthVolume = storage.GetValue(nameof(IncreaseDepthVolume), IncreaseDepthVolume);
+		CheckTradingState = storage.GetValue(nameof(CheckTradingState), CheckTradingState);
+		CheckMoney = storage.GetValue(nameof(CheckMoney), CheckMoney);
+		CheckShortable = storage.GetValue(nameof(CheckShortable), CheckShortable);
+		AllowStoreGenerateMessages = storage.GetValue(nameof(AllowStoreGenerateMessages), AllowStoreGenerateMessages);
+		CheckTradableDates = storage.GetValue(nameof(CheckTradableDates), CheckTradableDates);
 
-			if (TimeZone != null)
-				storage.SetValue(nameof(TimeZone), TimeZone);
-		}
+		if (storage.Contains(nameof(TimeZone)))
+			TimeZone = storage.GetValue<TimeZoneInfo>(nameof(TimeZone));
 
-		/// <summary>
-		/// To load the state of paper trading parameters.
-		/// </summary>
-		/// <param name="storage">Storage.</param>
-		public virtual void Load(SettingsStorage storage)
-		{
-			DepthExpirationTime = storage.GetValue(nameof(DepthExpirationTime), DepthExpirationTime);
-			MatchOnTouch = storage.GetValue(nameof(MatchOnTouch), MatchOnTouch);
-			Failing = storage.GetValue(nameof(Failing), Failing);
-			Latency = storage.GetValue(nameof(Latency), Latency);
-			IsSupportAtomicReRegister = storage.GetValue(nameof(IsSupportAtomicReRegister), IsSupportAtomicReRegister);
-			BufferTime = storage.GetValue(nameof(BufferTime), BufferTime);
-			//UseCandlesTimeFrame = storage.GetValue(nameof(UseCandlesTimeFrame), UseCandlesTimeFrame);
-			InitialOrderId = storage.GetValue(nameof(InitialOrderId), InitialOrderId);
-			InitialTradeId = storage.GetValue(nameof(InitialTradeId), InitialTradeId);
-			InitialTransactionId = storage.GetValue(nameof(InitialTransactionId), InitialTransactionId);
-			SpreadSize = storage.GetValue(nameof(SpreadSize), SpreadSize);
-			MaxDepth = storage.GetValue(nameof(MaxDepth), MaxDepth);
-			VolumeMultiplier = storage.GetValue(nameof(VolumeMultiplier), VolumeMultiplier);
-			PortfolioRecalcInterval = storage.GetValue(nameof(PortfolioRecalcInterval), PortfolioRecalcInterval);
-			ConvertTime = storage.GetValue(nameof(ConvertTime), ConvertTime);
-			PriceLimitOffset = storage.GetValue(nameof(PriceLimitOffset), PriceLimitOffset);
-			IncreaseDepthVolume = storage.GetValue(nameof(IncreaseDepthVolume), IncreaseDepthVolume);
-
-			if (storage.Contains(nameof(TimeZone)))
-				TimeZone = storage.GetValue<TimeZoneInfo>(nameof(TimeZone));
-		}
+		var commRules = storage.GetValue<SettingsStorage[]>(nameof(CommissionRules));
+		if (commRules is not null)
+			CommissionRules = commRules.Select(i => i.LoadEntire<ICommissionRule>()).ToArray();
 	}
 }

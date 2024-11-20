@@ -1,50 +1,39 @@
-#region S# License
-/******************************************************************************************
-NOTICE!!!  This program and source code is owned and licensed by
-StockSharp, LLC, www.stocksharp.com
-Viewing or use of this code requires your acceptance of the license
-agreement found at https://github.com/StockSharp/StockSharp/blob/master/LICENSE
-Removal of this comment is a violation of the license agreement.
+﻿namespace StockSharp.Algo.Indicators;
 
-Project: StockSharp.Algo.Indicators.Algo
-File: VolumeIndicator.cs
-Created: 2015, 11, 11, 2:32 PM
-
-Copyright 2010 by StockSharp, LLC
-*******************************************************************************************/
-#endregion S# License
-namespace StockSharp.Algo.Indicators
+/// <summary>
+/// Candle volume.
+/// </summary>
+/// <remarks>
+/// https://doc.stocksharp.com/topics/api/indicators/list_of_indicators/volume.html
+/// </remarks>
+[Display(
+	ResourceType = typeof(LocalizedStrings),
+	Name = LocalizedStrings.VolumeKey,
+	Description = LocalizedStrings.CandleVolumeKey)]
+[IndicatorIn(typeof(CandleIndicatorValue))]
+[IndicatorOut(typeof(CandleIndicatorValue))]
+[Doc("topics/api/indicators/list_of_indicators/volume.html")]
+public class VolumeIndicator : BaseIndicator
 {
-	using System.ComponentModel;
-
-	using StockSharp.Algo.Candles;
-	using StockSharp.Localization;
-
 	/// <summary>
-	/// Cadle volume.
+	/// Initializes a new instance of the <see cref="VolumeIndicator"/>.
 	/// </summary>
-	[DisplayName("Volume")]
-	[DescriptionLoc(LocalizedStrings.Str756Key)]
-	public class VolumeIndicator : BaseIndicator
+	public VolumeIndicator()
 	{
-		/// <summary>
-		/// Initializes a new instance of the <see cref="VolumeIndicator"/>.
-		/// </summary>
-		public VolumeIndicator()
-		{
-		}
+	}
 
-		/// <summary>
-		/// To handle the input value.
-		/// </summary>
-		/// <param name="input">The input value.</param>
-		/// <returns>The resulting value.</returns>
-		protected override IIndicatorValue OnProcess(IIndicatorValue input)
-		{
-			if (input.IsFinal)
-				IsFormed = true;
+	/// <inheritdoc />
+	public override IndicatorMeasures Measure => IndicatorMeasures.Volume;
 
-			return new CandleIndicatorValue(this, input.GetValue<Candle>(), c => c.TotalVolume);
-		}
+	/// <inheritdoc />
+	protected override IIndicatorValue OnProcess(IIndicatorValue input)
+	{
+		if (input.IsFinal)
+			IsFormed = true;
+
+		return new DecimalIndicatorValue(this, input.ToCandle().TotalVolume, input.Time)
+		{
+			IsFinal = input.IsFinal,
+		};
 	}
 }

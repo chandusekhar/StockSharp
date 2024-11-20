@@ -1,206 +1,399 @@
-﻿#region S# License
-/******************************************************************************************
-NOTICE!!!  This program and source code is owned and licensed by
-StockSharp, LLC, www.stocksharp.com
-Viewing or use of this code requires your acceptance of the license
-agreement found at https://github.com/StockSharp/StockSharp/blob/master/LICENSE
-Removal of this comment is a violation of the license agreement.
+﻿namespace StockSharp.Messages;
 
-Project: StockSharp.Messages.Messages
-File: IMessageAdapterWrapper.cs
-Created: 2015, 11, 11, 2:32 PM
-
-Copyright 2010 by StockSharp, LLC
-*******************************************************************************************/
-#endregion S# License
-namespace StockSharp.Messages
+/// <summary>
+/// Wrapping based adapter.
+/// </summary>
+public interface IMessageAdapterWrapper : IMessageAdapter
 {
-	using System;
-	using System.Collections.Generic;
+	/// <summary>
+	/// Underlying adapter.
+	/// </summary>
+	IMessageAdapter InnerAdapter { get; set; }
+}
 
-	using Ecng.Common;
-	using Ecng.Serialization;
-
-	using StockSharp.Logging;
+/// <summary>
+/// Base implementation of <see cref="IMessageAdapterWrapper"/>.
+/// </summary>
+public abstract class MessageAdapterWrapper : Cloneable<IMessageChannel>, IMessageAdapterWrapper
+{
+	private IMessageAdapter _innerAdapter;
 
 	/// <summary>
-	/// Wrapping based adapter.
+	/// Initialize <see cref="MessageAdapterWrapper"/>.
 	/// </summary>
-	public interface IMessageAdapterWrapper : IMessageAdapter
+	/// <param name="innerAdapter">Underlying adapter.</param>
+	protected MessageAdapterWrapper(IMessageAdapter innerAdapter)
 	{
-		/// <summary>
-		/// Underlying adapter.
-		/// </summary>
-		IMessageAdapter InnerAdapter { get; }
+		InnerAdapter = innerAdapter ?? throw new ArgumentNullException(nameof(innerAdapter));
+
+		_innerAdapterName = GetUnderlyingAdapter(InnerAdapter).Name;
+	}
+
+	private IMessageAdapter GetUnderlyingAdapter(IMessageAdapter adapter)
+	{
+		if (adapter == null)
+			throw new ArgumentNullException(nameof(adapter));
+
+		if (adapter is IMessageAdapterWrapper wrapper)
+			return GetUnderlyingAdapter(wrapper.InnerAdapter);
+
+		return adapter;
+	}
+
+	/// <inheritdoc />
+	public IMessageAdapter InnerAdapter
+	{
+		get => _innerAdapter;
+		set
+		{
+			if (_innerAdapter == value)
+				return;
+
+			if (_innerAdapter != null)
+				_innerAdapter.NewOutMessage -= InnerAdapterNewOutMessage;
+
+			_innerAdapter = value;
+
+			if (_innerAdapter != null)
+				_innerAdapter.NewOutMessage += InnerAdapterNewOutMessage;
+		}
 	}
 
 	/// <summary>
-	/// Base implementation of <see cref="IMessageAdapterWrapper"/>.
+	/// Control <see cref="InnerAdapter"/> lifetime.
 	/// </summary>
-	public abstract class MessageAdapterWrapper : Cloneable<IMessageChannel>, IMessageAdapterWrapper
+	public bool OwnInnerAdapter { get; set; }
+
+	/// <summary>
+	/// Process <see cref="InnerAdapter"/> output message.
+	/// </summary>
+	/// <param name="message">The message.</param>
+	protected virtual void InnerAdapterNewOutMessage(Message message)
 	{
-		/// <summary>
-		/// Initialize <see cref="MessageAdapterWrapper"/>.
-		/// </summary>
-		/// <param name="innerAdapter">Underlying adapter.</param>
-		protected MessageAdapterWrapper(IMessageAdapter innerAdapter)
-		{
-			if (innerAdapter == null)
-				throw new ArgumentNullException(nameof(innerAdapter));
-
-			InnerAdapter = innerAdapter;
-			InnerAdapter.NewOutMessage += OnInnerAdapterNewOutMessage;
-		}
-
-		/// <summary>
-		/// Underlying adapter.
-		/// </summary>
-		public IMessageAdapter InnerAdapter { get; }
-
-		/// <summary>
-		/// Control <see cref="InnerAdapter"/> lifetime.
-		/// </summary>
-		public bool OwnInnerAdaper { get; set; }
-
-		/// <summary>
-		/// Process <see cref="InnerAdapter"/> output message.
-		/// </summary>
-		/// <param name="message">The message.</param>
-		protected virtual void OnInnerAdapterNewOutMessage(Message message)
-		{
+		if (message.IsBack())
 			RaiseNewOutMessage(message);
+		else
+			OnInnerAdapterNewOutMessage(message);
+	}
+
+	/// <summary>
+	/// Process <see cref="InnerAdapter"/> output message.
+	/// </summary>
+	/// <param name="message">The message.</param>
+	protected virtual void OnInnerAdapterNewOutMessage(Message message)
+	{
+		RaiseNewOutMessage(message);
+	}
+
+	/// <summary>
+	/// To call the event <see cref="NewOutMessage"/>.
+	/// </summary>
+	/// <param name="message">The message.</param>
+	protected void RaiseNewOutMessage(Message message)
+	{
+		NewOutMessage?.Invoke(message);
+	}
+
+	ChannelStates IMessageChannel.State => InnerAdapter.State;
+
+	void IMessageChannel.Open()
+	{
+		InnerAdapter.Open();
+	}
+
+	void IMessageChannel.Close()
+	{
+		InnerAdapter.Close();
+	}
+
+	void IMessageChannel.Suspend()
+	{
+		InnerAdapter.Suspend();
+	}
+
+	void IMessageChannel.Resume()
+	{
+		InnerAdapter.Resume();
+	}
+
+	void IMessageChannel.Clear()
+	{
+		InnerAdapter.Clear();
+	}
+
+	event Action IMessageChannel.StateChanged
+	{
+		add => InnerAdapter.StateChanged += value;
+		remove => InnerAdapter.StateChanged -= value;
+	}
+
+	/// <summary>
+	/// Auto send <see cref="Message.BackMode"/> messages to <see cref="InnerAdapter"/>.
+	/// </summary>
+	protected virtual bool SendInBackFurther => true;
+
+	/// <inheritdoc />
+	public virtual bool SendInMessage(Message message)
+	{
+		if (message.IsBack())
+		{
+			if (message.Adapter == this)
+			{
+				message.UndoBack();
+			}
+			else
+			{
+				if (SendInBackFurther)
+				{
+					return InnerAdapter.SendInMessage(message);
+				}
+			}
 		}
 
-		/// <summary>
-		/// To call the event <see cref="NewOutMessage"/>.
-		/// </summary>
-		/// <param name="message">The message.</param>
-		protected void RaiseNewOutMessage(Message message)
+		try
 		{
-			NewOutMessage?.Invoke(message);
+			return OnSendInMessage(message);
 		}
-
-		bool IMessageChannel.IsOpened => InnerAdapter.IsOpened;
-
-		void IMessageChannel.Open()
+		catch (Exception ex)
 		{
-			InnerAdapter.Open();
-		}
-
-		void IMessageChannel.Close()
-		{
-			InnerAdapter.Close();
-		}
-
-		/// <summary>
-		/// Send message.
-		/// </summary>
-		/// <param name="message">Message.</param>
-		public virtual void SendInMessage(Message message)
-		{
-			InnerAdapter.SendInMessage(message);
-		}
-
-		/// <summary>
-		/// New message event.
-		/// </summary>
-		public virtual event Action<Message> NewOutMessage;
-
-		void IPersistable.Load(SettingsStorage storage)
-		{
-			InnerAdapter.Load(storage);
-		}
-
-		void IPersistable.Save(SettingsStorage storage)
-		{
-			InnerAdapter.Save(storage);
-		}
-
-		Guid ILogSource.Id => InnerAdapter.Id;
-
-		string ILogSource.Name => InnerAdapter.Name;
-
-		ILogSource ILogSource.Parent
-		{
-			get { return InnerAdapter.Parent; }
-			set { InnerAdapter.Parent = value; }
-		}
-
-		LogLevels ILogSource.LogLevel
-		{
-			get { return InnerAdapter.LogLevel; }
-			set { InnerAdapter.LogLevel = value; }
-		}
-
-		DateTimeOffset ILogSource.CurrentTime => InnerAdapter.CurrentTime;
-
-		bool ILogSource.IsRoot => InnerAdapter.IsRoot;
-
-		event Action<LogMessage> ILogSource.Log
-		{
-			add { InnerAdapter.Log += value; }
-			remove { InnerAdapter.Log -= value; }
-		}
-
-		void ILogReceiver.AddLog(LogMessage message)
-		{
-			InnerAdapter.AddLog(message);
-		}
-
-		ReConnectionSettings IMessageAdapter.ReConnectionSettings => InnerAdapter.ReConnectionSettings;
-
-		IdGenerator IMessageAdapter.TransactionIdGenerator => InnerAdapter.TransactionIdGenerator;
-
-		MessageTypes[] IMessageAdapter.SupportedMessages
-		{
-			get { return InnerAdapter.SupportedMessages; }
-			set { InnerAdapter.SupportedMessages = value; }
-		}
-
-		bool IMessageAdapter.IsValid => InnerAdapter.IsValid;
-
-		IDictionary<string, RefPair<SecurityTypes, string>> IMessageAdapter.SecurityClassInfo => InnerAdapter.SecurityClassInfo;
-
-		TimeSpan IMessageAdapter.HeartbeatInterval
-		{
-			get { return InnerAdapter.HeartbeatInterval; }
-			set { InnerAdapter.HeartbeatInterval = value; }
-		}
-
-		bool IMessageAdapter.PortfolioLookupRequired => InnerAdapter.PortfolioLookupRequired;
-
-		bool IMessageAdapter.SecurityLookupRequired => InnerAdapter.SecurityLookupRequired;
-
-		bool IMessageAdapter.OrderStatusRequired => InnerAdapter.OrderStatusRequired;
-
-		bool IMessageAdapter.OrderCancelVolumeRequired => InnerAdapter.OrderCancelVolumeRequired;
-
-		string IMessageAdapter.AssociatedBoardCode => InnerAdapter.AssociatedBoardCode;
-
-		OrderCondition IMessageAdapter.CreateOrderCondition()
-		{
-			return InnerAdapter.CreateOrderCondition();
-		}
-
-		bool IMessageAdapter.IsConnectionAlive()
-		{
-			return InnerAdapter.IsConnectionAlive();
-		}
-
-		IOrderLogMarketDepthBuilder IMessageAdapter.CreateOrderLogMarketDepthBuilder(SecurityId securityId)
-		{
-			return InnerAdapter.CreateOrderLogMarketDepthBuilder(securityId);
-		}
-
-		/// <summary>
-		/// Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources.
-		/// </summary>
-		public virtual void Dispose()
-		{
-			InnerAdapter.NewOutMessage -= OnInnerAdapterNewOutMessage;
-
-			if (OwnInnerAdaper)
-				InnerAdapter.Dispose();
+			RaiseNewOutMessage(message.CreateErrorResponse(ex, this));
+			throw;
 		}
 	}
+
+	/// <summary>
+	/// Send message.
+	/// </summary>
+	/// <param name="message">Message.</param>
+	/// <returns><see langword="true"/> if the specified message was processed successfully, otherwise, <see langword="false"/>.</returns>
+	protected virtual bool OnSendInMessage(Message message)
+	{
+		return InnerAdapter.SendInMessage(message);
+	}
+
+	/// <inheritdoc />
+	public event Action<Message> NewOutMessage;
+
+	/// <summary>
+	/// Load settings.
+	/// </summary>
+	/// <param name="storage">Settings storage.</param>
+	public virtual void Load(SettingsStorage storage)
+	{
+		InnerAdapter.Load(storage);
+	}
+
+	/// <summary>
+	/// Save settings.
+	/// </summary>
+	/// <param name="storage">Settings storage.</param>
+	public virtual void Save(SettingsStorage storage)
+	{
+		InnerAdapter.Save(storage);
+	}
+
+	Guid ILogSource.Id => InnerAdapter.Id;
+
+	private readonly string _innerAdapterName;
+
+	string ILogSource.Name
+	{
+		get => _innerAdapterName + $" ({GetType().Name.Remove(nameof(MessageAdapter))})";
+		set { }
+	}
+
+	/// <inheritdoc />
+	public virtual ILogSource Parent
+	{
+		get => InnerAdapter.Parent;
+		set => InnerAdapter.Parent = value;
+	}
+
+	/// <inheritdoc />
+	public event Action<ILogSource> ParentRemoved
+	{
+		add { }
+		remove { }
+	}
+
+	LogLevels ILogSource.LogLevel
+	{
+		get => InnerAdapter.LogLevel;
+		set => InnerAdapter.LogLevel = value;
+	}
+
+	/// <inheritdoc />
+	public DateTimeOffset CurrentTime => InnerAdapter.CurrentTime;
+
+	bool ILogSource.IsRoot => InnerAdapter.IsRoot;
+
+	event Action<LogMessage> ILogSource.Log
+	{
+		add => InnerAdapter.Log += value;
+		remove => InnerAdapter.Log -= value;
+	}
+
+	void ILogReceiver.AddLog(LogMessage message)
+	{
+		InnerAdapter.AddLog(message);
+	}
+
+	/// <inheritdoc />
+	public bool CheckTimeFrameByRequest => InnerAdapter.CheckTimeFrameByRequest;
+
+	/// <inheritdoc />
+	public ReConnectionSettings ReConnectionSettings => InnerAdapter.ReConnectionSettings;
+
+	/// <inheritdoc />
+	public IdGenerator TransactionIdGenerator => InnerAdapter.TransactionIdGenerator;
+
+	/// <inheritdoc />
+	public virtual IEnumerable<MessageTypeInfo> PossibleSupportedMessages => InnerAdapter.PossibleSupportedMessages;
+
+	/// <inheritdoc />
+	public virtual IEnumerable<MessageTypes> SupportedInMessages
+	{
+		get => InnerAdapter.SupportedInMessages;
+		set => InnerAdapter.SupportedInMessages = value;
+	}
+
+	/// <inheritdoc />
+	public virtual IEnumerable<MessageTypes> SupportedResultMessages => InnerAdapter.SupportedResultMessages;
+
+	/// <inheritdoc />
+	public virtual IEnumerable<DataType> SupportedMarketDataTypes => InnerAdapter.SupportedMarketDataTypes;
+
+	/// <inheritdoc />
+	public virtual IEnumerable<DataType> GetSupportedDataTypes(SecurityId securityId)
+		=> InnerAdapter.GetSupportedDataTypes(securityId);
+
+	/// <inheritdoc />
+	public TimeSpan HeartbeatInterval
+	{
+		get => InnerAdapter.HeartbeatInterval;
+		set => InnerAdapter.HeartbeatInterval = value;
+	}
+
+	/// <inheritdoc />
+	public string StorageName => InnerAdapter.StorageName;
+
+	/// <inheritdoc />
+	public virtual bool IsNativeIdentifiersPersistable => InnerAdapter.IsNativeIdentifiersPersistable;
+
+	/// <inheritdoc />
+	public virtual bool IsNativeIdentifiers => InnerAdapter.IsNativeIdentifiers;
+
+	/// <inheritdoc />
+	public virtual bool IsFullCandlesOnly => InnerAdapter.IsFullCandlesOnly;
+
+	/// <inheritdoc />
+	public virtual bool IsSupportSubscriptions => InnerAdapter.IsSupportSubscriptions;
+
+	/// <inheritdoc />
+	public virtual bool IsSupportCandlesUpdates(MarketDataMessage subscription) => InnerAdapter.IsSupportCandlesUpdates(subscription);
+
+	/// <inheritdoc />
+	public virtual bool IsSupportCandlesPriceLevels(MarketDataMessage subscription) => InnerAdapter.IsSupportCandlesPriceLevels(subscription);
+
+	/// <inheritdoc />
+	public virtual bool IsSupportPartialDownloading => InnerAdapter.IsSupportPartialDownloading;
+
+	/// <inheritdoc />
+	public virtual MessageAdapterCategories Categories => InnerAdapter.Categories;
+
+	IEnumerable<Tuple<string, Type>> IMessageAdapter.SecurityExtendedFields => InnerAdapter.SecurityExtendedFields;
+
+	/// <inheritdoc />
+	public virtual IEnumerable<int> SupportedOrderBookDepths => InnerAdapter.SupportedOrderBookDepths;
+
+	/// <inheritdoc />
+	public virtual bool IsSupportOrderBookIncrements => InnerAdapter.IsSupportOrderBookIncrements;
+
+	/// <inheritdoc />
+	public virtual bool IsSupportExecutionsPnL => InnerAdapter.IsSupportExecutionsPnL;
+
+	/// <inheritdoc />
+	public virtual bool IsSecurityNewsOnly => InnerAdapter.IsSecurityNewsOnly;
+
+	/// <inheritdoc />
+	public IEnumerable<Level1Fields> CandlesBuildFrom => InnerAdapter.CandlesBuildFrom;
+
+	/// <inheritdoc />
+	public virtual bool IsSupportTransactionLog => InnerAdapter.IsSupportTransactionLog;
+
+	Type IMessageAdapter.OrderConditionType => InnerAdapter.OrderConditionType;
+
+	bool IMessageAdapter.HeartbeatBeforConnect => InnerAdapter.HeartbeatBeforConnect;
+
+	Uri IMessageAdapter.Icon => InnerAdapter.Icon;
+
+	bool IMessageAdapter.IsAutoReplyOnTransactonalUnsubscription => InnerAdapter.IsAutoReplyOnTransactonalUnsubscription;
+
+	bool IMessageAdapter.IsReplaceCommandEditCurrent => InnerAdapter.IsReplaceCommandEditCurrent;
+
+	bool IMessageAdapter.EnqueueSubscriptions
+	{
+		get => InnerAdapter.EnqueueSubscriptions;
+		set => InnerAdapter.EnqueueSubscriptions = value;
+	}
+
+	bool IMessageAdapter.UseChannels => InnerAdapter.UseChannels;
+
+	TimeSpan IMessageAdapter.IterationInterval => InnerAdapter.IterationInterval;
+
+	TimeSpan? IMessageAdapter.LookupTimeout => InnerAdapter.LookupTimeout;
+
+	string IMessageAdapter.FeatureName => InnerAdapter.FeatureName;
+
+	bool IMessageAdapter.ExtraSetup => InnerAdapter.ExtraSetup;
+
+	/// <inheritdoc />
+	public virtual bool? IsPositionsEmulationRequired => InnerAdapter.IsPositionsEmulationRequired;
+
+	bool IMessageAdapter.GenerateOrderBookFromLevel1
+	{
+		get => InnerAdapter.GenerateOrderBookFromLevel1;
+		set => InnerAdapter.GenerateOrderBookFromLevel1 = value;
+	}
+
+	string[] IMessageAdapter.AssociatedBoards => InnerAdapter.AssociatedBoards;
+
+	IOrderLogMarketDepthBuilder IMessageAdapter.CreateOrderLogMarketDepthBuilder(SecurityId securityId)
+		=> InnerAdapter.CreateOrderLogMarketDepthBuilder(securityId);
+
+	/// <inheritdoc />
+	public virtual IEnumerable<object> GetCandleArgs(Type candleType, SecurityId securityId, DateTimeOffset? from, DateTimeOffset? to)
+		=> InnerAdapter.GetCandleArgs(candleType, securityId, from, to);
+
+	/// <inheritdoc />
+	public virtual TimeSpan GetHistoryStepSize(SecurityId securityId, DataType dataType, out TimeSpan iterationInterval)
+		=> InnerAdapter.GetHistoryStepSize(securityId, dataType, out iterationInterval);
+
+	/// <inheritdoc />
+	public virtual int? GetMaxCount(DataType dataType) => InnerAdapter.GetMaxCount(dataType);
+
+	/// <inheritdoc />
+	public virtual bool IsAllDownloadingSupported(DataType dataType)
+		=> InnerAdapter.IsAllDownloadingSupported(dataType);
+
+	/// <inheritdoc />
+	public virtual bool IsSecurityRequired(DataType dataType)
+		=> InnerAdapter.IsSecurityRequired(dataType);
+
+	/// <inheritdoc />
+	public virtual void Dispose()
+	{
+		if (InnerAdapter is null)
+			return;
+
+		InnerAdapter.NewOutMessage -= InnerAdapterNewOutMessage;
+
+		if (OwnInnerAdapter)
+			InnerAdapter.Dispose();
+
+		GC.SuppressFinalize(this);
+	}
+
+	/// <inheritdoc />
+	public override string ToString() => InnerAdapter.ToString();
 }

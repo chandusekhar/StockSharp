@@ -1,153 +1,187 @@
-#region S# License
-/******************************************************************************************
-NOTICE!!!  This program and source code is owned and licensed by
-StockSharp, LLC, www.stocksharp.com
-Viewing or use of this code requires your acceptance of the license
-agreement found at https://github.com/StockSharp/StockSharp/blob/master/LICENSE
-Removal of this comment is a violation of the license agreement.
+namespace StockSharp.Messages;
 
-Project: StockSharp.Messages.Messages
-File: QuoteChange.cs
-Created: 2015, 11, 11, 2:32 PM
-
-Copyright 2010 by StockSharp, LLC
-*******************************************************************************************/
-#endregion S# License
-namespace StockSharp.Messages
+/// <summary>
+/// Change actions.
+/// </summary>
+[DataContract]
+[Serializable]
+public enum QuoteChangeActions : byte
 {
-	using System;
-	using System.Collections.Generic;
-	using System.Runtime.Serialization;
-	using System.Xml.Serialization;
-
-	using Ecng.Common;
-	using Ecng.Serialization;
-
-	using StockSharp.Localization;
+	/// <summary>
+	/// New quote for <see cref="QuoteChange.StartPosition"/>.
+	/// </summary>
+	[EnumMember]
+	New,
 
 	/// <summary>
-	/// Market depth quote representing bid or ask.
+	/// Update quote for <see cref="QuoteChange.StartPosition"/>.
 	/// </summary>
-	[System.Runtime.Serialization.DataContract]
-	[Serializable]
-	[DisplayNameLoc(LocalizedStrings.Str273Key)]
-	[DescriptionLoc(LocalizedStrings.Str274Key)]
-	public class QuoteChange : Equatable<QuoteChange>, IExtendableEntity
+	[EnumMember]
+	Update,
+
+	/// <summary>
+	/// Delete quotes from <see cref="QuoteChange.StartPosition"/> till <see cref="QuoteChange.EndPosition"/>.
+	/// </summary>
+	[EnumMember]
+	Delete,
+}
+
+/// <summary>
+/// Quote conditions.
+/// </summary>
+[DataContract]
+[Serializable]
+public enum QuoteConditions : byte
+{
+	/// <summary>
+	/// Active.
+	/// </summary>
+	[EnumMember]
+	[Display(ResourceType = typeof(LocalizedStrings), Name = LocalizedStrings.ActiveKey)]
+	Active,
+
+	/// <summary>
+	/// Indicative.
+	/// </summary>
+	[EnumMember]
+	[Display(ResourceType = typeof(LocalizedStrings), Name = LocalizedStrings.IndicativeKey)]
+	Indicative,
+}
+
+/// <summary>
+/// Market depth quote representing bid or ask.
+/// </summary>
+[DataContract]
+[Serializable]
+public struct QuoteChange
+{
+	/// <summary>
+	/// Initializes a new instance of the <see cref="QuoteChange"/>.
+	/// </summary>
+	/// <param name="price">Quote price.</param>
+	/// <param name="volume">Quote volume.</param>
+	/// <param name="ordersCount">Orders count.</param>
+	/// <param name="condition">Quote condition.</param>
+	public QuoteChange(decimal price, decimal volume, int? ordersCount = null, QuoteConditions condition = default)
 	{
-		/// <summary>
-		/// Initializes a new instance of the <see cref="QuoteChange"/>.
-		/// </summary>
-		public QuoteChange()
+		Price = price;
+		Volume = volume;
+		OrdersCount = ordersCount;
+		Condition = condition;
+
+		StartPosition = null;
+		EndPosition = null;
+		Action = null;
+
+		BoardCode = null;
+
+		_innerQuotes = null;
+	}
+
+	/// <summary>
+	/// Quote price.
+	/// </summary>
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.PriceKey,
+		Description = LocalizedStrings.QuotePriceKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public decimal Price { get; set; }
+
+	/// <summary>
+	/// Quote volume.
+	/// </summary>
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.VolumeKey,
+		Description = LocalizedStrings.QuoteVolumeKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public decimal Volume { get; set; }
+
+	/// <summary>
+	/// Electronic board code.
+	/// </summary>
+	[DataMember]
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.BoardKey,
+		Description = LocalizedStrings.BoardCodeKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public string BoardCode { get; set; }
+
+	/// <summary>
+	/// Orders count.
+	/// </summary>
+	[DataMember]
+	public int? OrdersCount { get; set; }
+
+	/// <summary>
+	/// Start position, related for <see cref="Action"/>.
+	/// </summary>
+	[DataMember]
+	public int? StartPosition { get; set; }
+
+	/// <summary>
+	/// End position, related for <see cref="Action"/>.
+	/// </summary>
+	[DataMember]
+	public int? EndPosition { get; set; }
+
+	/// <summary>
+	/// Change action.
+	/// </summary>
+	[DataMember]
+	public QuoteChangeActions? Action { get; set; }
+
+	/// <summary>
+	/// Quote condition.
+	/// </summary>
+	[DataMember]
+	public QuoteConditions Condition { get; set; }
+
+	private QuoteChange[] _innerQuotes;
+
+	/// <summary>
+	/// Collection of enclosed quotes, which are combined into a single quote.
+	/// </summary>
+	public QuoteChange[] InnerQuotes
+	{
+		get => _innerQuotes;
+		set
 		{
-		}
+			var wasNonNull = _innerQuotes != null;
 
-		/// <summary>
-		/// Initializes a new instance of the <see cref="QuoteChange"/>.
-		/// </summary>
-		/// <param name="side">Direction (buy or sell).</param>
-		/// <param name="price">Quote price.</param>
-		/// <param name="volume">Quote volume.</param>
-		public QuoteChange(Sides side, decimal price, decimal volume)
-		{
-			Side = side;
-			Price = price;
-			Volume = volume;
-		}
+			_innerQuotes = value;
 
-		/// <summary>
-		/// Quote price.
-		/// </summary>
-		[DataMember]
-		[DisplayNameLoc(LocalizedStrings.PriceKey)]
-		[DescriptionLoc(LocalizedStrings.Str275Key)]
-		[MainCategory]
-		public decimal Price { get; set; }
+			if (_innerQuotes is null)
+			{
+				if (wasNonNull)
+				{
+					Volume = default;
+					OrdersCount = default;
+				}
+			}
+			else
+			{
+				var volume = 0m;
+				var ordersCount = 0;
 
-		/// <summary>
-		/// Quote volume.
-		/// </summary>
-		[DataMember]
-		[DisplayNameLoc(LocalizedStrings.VolumeKey)]
-		[DescriptionLoc(LocalizedStrings.Str276Key)]
-		[MainCategory]
-		public decimal Volume { get; set; }
+				foreach (var item in value)
+				{
+					volume += item.Volume;
 
-		/// <summary>
-		/// Direction (buy or sell).
-		/// </summary>
-		[DataMember]
-		[DisplayNameLoc(LocalizedStrings.Str128Key)]
-		[DescriptionLoc(LocalizedStrings.Str277Key)]
-		[MainCategory]
-		public Sides Side { get; set; }
+					if (item.OrdersCount != null)
+						ordersCount += item.OrdersCount.Value;
+				}
 
-		/// <summary>
-		/// Electronic board code.
-		/// </summary>
-		[DataMember]
-		[DisplayNameLoc(LocalizedStrings.BoardKey)]
-		[DescriptionLoc(LocalizedStrings.BoardCodeKey)]
-		[MainCategory]
-		public string BoardCode { get; set; }
-
-		[field: NonSerialized]
-		private IDictionary<object, object> _extensionInfo;
-
-		/// <summary>
-		/// Extended quote info.
-		/// </summary>
-		/// <remarks>
-		/// Uses in case of keep additional information associated with the quotation. For example, the number of contracts in its own order book, the amount of the best buying and selling.
-		/// </remarks>
-		[Ignore]
-		[XmlIgnore]
-		[DisplayNameLoc(LocalizedStrings.ExtendedInfoKey)]
-		[DescriptionLoc(LocalizedStrings.Str427Key)]
-		[MainCategory]
-		public IDictionary<object, object> ExtensionInfo
-		{
-			get { return _extensionInfo; }
-			set { _extensionInfo = value; }
-		}
-
-		/// <summary>
-		/// Create a copy of <see cref="QuoteChange"/>.
-		/// </summary>
-		/// <returns>Copy.</returns>
-		public override QuoteChange Clone()
-		{
-			var clone = new QuoteChange(Side, Price, Volume);
-			this.CopyExtensionInfo(clone);
-			return clone;
-		}
-
-		/// <summary>
-		/// Compare <see cref="QuoteChange"/> on the equivalence.
-		/// </summary>
-		/// <param name="other">Another value with which to compare.</param>
-		/// <returns><see langword="true" />, if the specified object is equal to the current object, otherwise, <see langword="false" />.</returns>
-		protected override bool OnEquals(QuoteChange other)
-		{
-			return Price == other.Price && Side == other.Side;
-		}
-
-		/// <summary>
-		/// Get the hash code of the object <see cref="QuoteChange"/>.
-		/// </summary>
-		/// <returns>A hash code.</returns>
-		public override int GetHashCode()
-		{
-			return Price.GetHashCode() ^ Side.GetHashCode();
-		}
-
-		/// <summary>
-		/// Returns a string that represents the current object.
-		/// </summary>
-		/// <returns>A string that represents the current object.</returns>
-		public override string ToString()
-		{
-			var side = Side == Sides.Buy ? LocalizedStrings.Bid : LocalizedStrings.Ask;
-			return $"{side} {Price} {Volume}";
+				Volume = volume;
+				OrdersCount = ordersCount.DefaultAsNull();
+			}
 		}
 	}
+
+	/// <inheritdoc />
+	public override string ToString() => $"{Price} {Volume}";
 }

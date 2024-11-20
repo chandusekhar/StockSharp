@@ -1,241 +1,154 @@
-#region S# License
-/******************************************************************************************
-NOTICE!!!  This program and source code is owned and licensed by
-StockSharp, LLC, www.stocksharp.com
-Viewing or use of this code requires your acceptance of the license
-agreement found at https://github.com/StockSharp/StockSharp/blob/master/LICENSE
-Removal of this comment is a violation of the license agreement.
+namespace StockSharp.BusinessEntities;
 
-Project: StockSharp.BusinessEntities.BusinessEntities
-File: Exchange.cs
-Created: 2015, 11, 11, 2:32 PM
+using System.Runtime.CompilerServices;
 
-Copyright 2010 by StockSharp, LLC
-*******************************************************************************************/
-#endregion S# License
-namespace StockSharp.BusinessEntities
+/// <summary>
+/// Exchange info.
+/// </summary>
+[Serializable]
+[DataContract]
+[KnownType(typeof(TimeZoneInfo))]
+[KnownType(typeof(TimeZoneInfo.AdjustmentRule))]
+[KnownType(typeof(TimeZoneInfo.AdjustmentRule[]))]
+[KnownType(typeof(TimeZoneInfo.TransitionTime))]
+[KnownType(typeof(DayOfWeek))]
+public partial class Exchange : Equatable<Exchange>, IPersistable, INotifyPropertyChanged
 {
-	using System;
-	using System.Collections.Generic;
-	using System.ComponentModel;
-	using System.Runtime.Serialization;
-	using System.Xml.Serialization;
+	/// <summary>
+	/// Initializes a new instance of the <see cref="Exchange"/>.
+	/// </summary>
+	public Exchange()
+	{
+	}
 
-	using Ecng.Common;
-	using Ecng.Serialization;
-
-	using StockSharp.Messages;
+	private string _name;
 
 	/// <summary>
-	/// Exchange info.
+	/// Exchange code name.
 	/// </summary>
-	[Serializable]
-	[System.Runtime.Serialization.DataContract]
-	[KnownType(typeof(TimeZoneInfo))]
-	[KnownType(typeof(TimeZoneInfo.AdjustmentRule))]
-	[KnownType(typeof(TimeZoneInfo.AdjustmentRule[]))]
-	[KnownType(typeof(TimeZoneInfo.TransitionTime))]
-	[KnownType(typeof(DayOfWeek))]
-	public partial class Exchange : Equatable<Exchange>, IExtendableEntity, IPersistable, INotifyPropertyChanged
+	[DataMember]
+	public string Name
 	{
-		/// <summary>
-		/// Initializes a new instance of the <see cref="Exchange"/>.
-		/// </summary>
-		public Exchange()
+		get => _name;
+		set
 		{
-			ExtensionInfo = new Dictionary<object, object>();
-			RusName = EngName = string.Empty;
+			if (Name == value)
+				return;
+
+			_name = value;
+			Notify();
 		}
+	}
 
-		private string _name;
+	private string GetLocName(string language) => FullNameLoc.IsEmpty() ? null : LocalizedStrings.GetString(FullNameLoc, language);
 
-		/// <summary>
-		/// Exchange code name.
-		/// </summary>
-		[DataMember]
-		[Identity]
-		public string Name
+	/// <summary>
+	/// Full name.
+	/// </summary>
+	public string FullName => GetLocName(null);
+
+	private string _fullNameLoc;
+
+	/// <summary>
+	/// Full name (localization key).
+	/// </summary>
+	[DataMember]
+	public string FullNameLoc
+	{
+		get => _fullNameLoc;
+		set
 		{
-			get { return _name; }
-			set
-			{
-				if (Name == value)
-					return;
+			if (FullNameLoc == value)
+				return;
 
-				_name = value;
-				Notify(nameof(Name));
-			}
+			_fullNameLoc = value;
+			Notify();
 		}
+	}
 
-		private string _rusName;
+	private CountryCodes? _countryCode;
 
-		/// <summary>
-		/// Russian exchange name.
-		/// </summary>
-		[DataMember]
-		public string RusName
+	/// <summary>
+	/// ISO country code.
+	/// </summary>
+	[DataMember]
+	public CountryCodes? CountryCode
+	{
+		get => _countryCode;
+		set
 		{
-			get { return _rusName; }
-			set
-			{
-				if (RusName == value)
-					return;
+			if (CountryCode == value)
+				return;
 
-				_rusName = value;
-				Notify(nameof(RusName));
-			}
+			_countryCode = value;
+			Notify();
 		}
+	}
 
-		private string _engName;
+	[field: NonSerialized]
+	private PropertyChangedEventHandler _propertyChanged;
 
-		/// <summary>
-		/// English exchange name.
-		/// </summary>
-		[DataMember]
-		public string EngName
+	event PropertyChangedEventHandler INotifyPropertyChanged.PropertyChanged
+	{
+		add => _propertyChanged += value;
+		remove => _propertyChanged -= value;
+	}
+
+	private void Notify([CallerMemberName]string propertyName = null)
+	{
+		_propertyChanged?.Invoke(this, propertyName);
+	}
+
+	/// <inheritdoc />
+	public override string ToString() => Name;
+
+	/// <summary>
+	/// Compare <see cref="Exchange"/> on the equivalence.
+	/// </summary>
+	/// <param name="other">Another value with which to compare.</param>
+	/// <returns><see langword="true" />, if the specified object is equal to the current object, otherwise, <see langword="false" />.</returns>
+	protected override bool OnEquals(Exchange other)
+	{
+		return Name == other.Name;
+	}
+
+	/// <summary>Serves as a hash function for a particular type. </summary>
+	/// <returns>A hash code for the current <see cref="T:System.Object" />.</returns>
+	public override int GetHashCode() => Name?.GetHashCode() ?? 0;
+
+	/// <summary>
+	/// Create a copy of <see cref="Exchange"/>.
+	/// </summary>
+	/// <returns>Copy.</returns>
+	public override Exchange Clone()
+	{
+		return new Exchange
 		{
-			get { return _engName; }
-			set
-			{
-				if (EngName == value)
-					return;
+			Name = Name,
+			FullNameLoc = FullNameLoc,
+			CountryCode = CountryCode,
+		};
+	}
 
-				_engName = value;
-				Notify(nameof(EngName));
-			}
-		}
+	/// <summary>
+	/// Load settings.
+	/// </summary>
+	/// <param name="storage">Settings storage.</param>
+	public void Load(SettingsStorage storage)
+	{
+		Name = storage.GetValue<string>(nameof(Name));
+		FullNameLoc = storage.GetValue<string>(nameof(FullNameLoc));
+		CountryCode = storage.GetValue<CountryCodes?>(nameof(CountryCode));
+	}
 
-		private CountryCodes? _countryCode;
-
-		/// <summary>
-		/// ISO country code.
-		/// </summary>
-		[DataMember]
-		[Nullable]
-		public CountryCodes? CountryCode
-		{
-			get { return _countryCode; }
-			set
-			{
-				if (CountryCode == value)
-					return;
-
-				_countryCode = value;
-				Notify(nameof(CountryCode));
-			}
-		}
-
-		[field: NonSerialized]
-		private IDictionary<object, object> _extensionInfo;
-
-		/// <summary>
-		/// Extended exchange info.
-		/// </summary>
-		/// <remarks>
-		/// Required if additional information associated with the exchange is stored in the program.
-		/// </remarks>
-		[XmlIgnore]
-		[Browsable(false)]
-		[DataMember]
-		public IDictionary<object, object> ExtensionInfo
-		{
-			get { return _extensionInfo; }
-			set
-			{
-				if (value == null)
-					throw new ArgumentNullException(nameof(value));
-
-				_extensionInfo = value;
-				Notify(nameof(ExtensionInfo));
-			}
-		}
-
-		[OnDeserialized]
-		private void AfterDeserialization(StreamingContext ctx)
-		{
-			if (ExtensionInfo == null)
-				ExtensionInfo = new Dictionary<object, object>();
-		}
-
-		[field: NonSerialized]
-		private PropertyChangedEventHandler _propertyChanged;
-
-		event PropertyChangedEventHandler INotifyPropertyChanged.PropertyChanged
-		{
-			add { _propertyChanged += value; }
-			remove { _propertyChanged -= value; }
-		}
-
-		private void Notify(string info)
-		{
-			_propertyChanged?.Invoke(this, info);
-		}
-
-		/// <summary>
-		/// Returns a string that represents the current object.
-		/// </summary>
-		/// <returns>A string that represents the current object.</returns>
-		public override string ToString()
-		{
-			return Name;
-		}
-
-		/// <summary>
-		/// Compare <see cref="Exchange"/> on the equivalence.
-		/// </summary>
-		/// <param name="other">Another value with which to compare.</param>
-		/// <returns><see langword="true" />, if the specified object is equal to the current object, otherwise, <see langword="false" />.</returns>
-		protected override bool OnEquals(Exchange other)
-		{
-			return Name == other.Name;
-		}
-
-		/// <summary>
-		/// Get the hash code of the object <see cref="Exchange"/>.
-		/// </summary>
-		/// <returns>A hash code.</returns>
-		public override int GetHashCode()
-		{
-			return Name.GetHashCode();
-		}
-
-		/// <summary>
-		/// Create a copy of <see cref="Exchange"/>.
-		/// </summary>
-		/// <returns>Copy.</returns>
-		public override Exchange Clone()
-		{
-			return new Exchange
-			{
-				Name = Name,
-				RusName = RusName,
-				EngName = EngName,
-				CountryCode = CountryCode,
-			};
-		}
-
-		/// <summary>
-		/// Load settings.
-		/// </summary>
-		/// <param name="storage">Settings storage.</param>
-		public void Load(SettingsStorage storage)
-		{
-			Name = storage.GetValue<string>(nameof(Name));
-			RusName = storage.GetValue<string>(nameof(RusName));
-			EngName = storage.GetValue<string>(nameof(EngName));
-			CountryCode = storage.GetValue<CountryCodes?>(nameof(CountryCode));
-		}
-
-		/// <summary>
-		/// Save settings.
-		/// </summary>
-		/// <param name="storage">Settings storage.</param>
-		public void Save(SettingsStorage storage)
-		{
-			storage.SetValue(nameof(Name), Name);
-			storage.SetValue(nameof(RusName), RusName);
-			storage.SetValue(nameof(EngName), EngName);
-			storage.SetValue(nameof(CountryCode), CountryCode.To<string>());
-		}
+	/// <summary>
+	/// Save settings.
+	/// </summary>
+	/// <param name="storage">Settings storage.</param>
+	public void Save(SettingsStorage storage)
+	{
+		storage.SetValue(nameof(Name), Name);
+		storage.SetValue(nameof(FullNameLoc), FullNameLoc);
+		storage.SetValue(nameof(CountryCode), CountryCode.To<string>());
 	}
 }

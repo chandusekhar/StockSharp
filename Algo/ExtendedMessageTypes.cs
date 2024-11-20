@@ -1,33 +1,36 @@
-﻿#region S# License
-/******************************************************************************************
-NOTICE!!!  This program and source code is owned and licensed by
-StockSharp, LLC, www.stocksharp.com
-Viewing or use of this code requires your acceptance of the license
-agreement found at https://github.com/StockSharp/StockSharp/blob/master/LICENSE
-Removal of this comment is a violation of the license agreement.
+﻿namespace StockSharp.Algo;
 
-Project: StockSharp.Algo.Algo
-File: ExtendedMessageTypes.cs
-Created: 2015, 11, 11, 2:32 PM
+using StockSharp.Algo.Testing;
 
-Copyright 2010 by StockSharp, LLC
-*******************************************************************************************/
-#endregion S# License
-namespace StockSharp.Algo
+/// <summary>
+/// Extended <see cref="MessageTypes"/>.
+/// </summary>
+public static class ExtendedMessageTypes
 {
-	using System.Reflection;
+	/// <summary>
+	/// <see cref="GeneratorMessage"/>.
+	/// </summary>
+	public const MessageTypes Generator = (MessageTypes)(-6);
 
-	using StockSharp.Messages;
+	/// <summary>
+	/// <see cref="CommissionRuleMessage"/>.
+	/// </summary>
+	public const MessageTypes CommissionRule = (MessageTypes)(-7);
+	
+	/// <summary>
+	/// <see cref="HistorySourceMessage"/>.
+	/// </summary>
+	public const MessageTypes HistorySource = (MessageTypes)(-8);
+	
+	internal const MessageTypes RemoveSecurity = (MessageTypes)(-9);
+	//internal const MessageTypes ProcessSuspended = (MessageTypes)(-10);
+	internal const MessageTypes StrategyChangeState = (MessageTypes)(-11);
+	internal const MessageTypes Reconnect = (MessageTypes)(-12);
 
-	[Obfuscation(Feature = "Apply to member * when property: renaming", Exclude = true)]
-	static class ExtendedMessageTypes
-	{
-		public const MessageTypes Last = (MessageTypes)(-1);
-		public const MessageTypes Clearing = (MessageTypes)(-2);
-		public const MessageTypes EmulationState = (MessageTypes)(-5);
-		public const MessageTypes Generator = (MessageTypes)(-6);
-		public const MessageTypes CommissionRule = (MessageTypes)(-7);
-		public const MessageTypes HistorySource = (MessageTypes)(-8);
-		public const MessageTypes RemoveSecurity = (MessageTypes)(-9);
-	}
+	internal const MessageTypes PartialDownload = (MessageTypes)(-21);
+
+	/// <summary>
+	/// <see cref="SubscriptionSecurityAllMessage"/>.
+	/// </summary>
+	public const MessageTypes SubscriptionSecurityAll = (MessageTypes)(-26);
 }

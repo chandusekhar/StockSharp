@@ -1,116 +1,88 @@
-﻿#region S# License
-/******************************************************************************************
-NOTICE!!!  This program and source code is owned and licensed by
-StockSharp, LLC, www.stocksharp.com
-Viewing or use of this code requires your acceptance of the license
-agreement found at https://github.com/StockSharp/StockSharp/blob/master/LICENSE
-Removal of this comment is a violation of the license agreement.
+﻿namespace StockSharp.Algo.Indicators;
 
-Project: StockSharp.Algo.Indicators.Algo
-File: AlligatorLine.cs
-Created: 2015, 11, 11, 2:32 PM
-
-Copyright 2010 by StockSharp, LLC
-*******************************************************************************************/
-#endregion S# License
-namespace StockSharp.Algo.Indicators
+/// <summary>
+/// The realization of one of indicator lines Alligator (Jaw, Teeth, and Lips).
+/// </summary>
+[IndicatorHidden]
+public class AlligatorLine : LengthIndicator<decimal>
 {
-	using Ecng.Serialization;
+	private readonly MedianPrice _medianPrice;
 
-	using StockSharp.Localization;
+	private readonly SmoothedMovingAverage _sma;
 
 	/// <summary>
-	/// The realization of one of indicator lines Alligator (Jaw, Teeth, and Lips).
+	/// Initializes a new instance of the <see cref="AlligatorLine"/>.
 	/// </summary>
-	public class AlligatorLine : LengthIndicator<decimal>
+	public AlligatorLine()
 	{
-		private readonly MedianPrice _medianPrice;
+		_medianPrice = new MedianPrice();
+		_sma = new SmoothedMovingAverage();
+		//_sma = new SimpleMovingAverage();
+	}
 
-		private readonly SmoothedMovingAverage _sma;
-		//private readonly SimpleMovingAverage _sma;
+	private int _shift;
 
-		/// <summary>
-		/// Initializes a new instance of the <see cref="AlligatorLine"/>.
-		/// </summary>
-		public AlligatorLine()
+	/// <summary>
+	/// Shift to the future.
+	/// </summary>
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.ShiftKey,
+		Description = LocalizedStrings.ShiftToFutureKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public int Shift
+	{
+		get => _shift;
+		set
 		{
-			_medianPrice = new MedianPrice();
-			_sma = new SmoothedMovingAverage();
-			//_sma = new SimpleMovingAverage();
+			_shift = value;
+			Reset();
 		}
+	}
 
-		private int _shift;
+	/// <summary>
+	/// To reset the indicator status to initial. The method is called each time when initial settings are changed (for example, the length of period).
+	/// </summary>
+	public override void Reset()
+	{
+		_sma.Length = Length;
+		_medianPrice.Reset();
 
-		/// <summary>
-		/// Shift to the future.
-		/// </summary>
-		[DisplayNameLoc(LocalizedStrings.Str841Key)]
-		[DescriptionLoc(LocalizedStrings.Str842Key)]
-		[CategoryLoc(LocalizedStrings.GeneralKey)]
-		public int Shift
-		{
-			get { return _shift; }
-			set
-			{
-				_shift = value;
-				Reset();
-			}
-		}
+		base.Reset();
+	}
 
-		/// <summary>
-		/// To reset the indicator status to initial. The method is called each time when initial settings are changed (for example, the length of period).
-		/// </summary>
-		public override void Reset()
-		{
-			_sma.Length = Length;
-			_medianPrice.Reset();
+	/// <inheritdoc />
+	protected override bool CalcIsFormed() => Buffer.Count > Shift;
 
-			base.Reset();
-		}
-
-		/// <summary>
-		/// Whether the indicator is set.
-		/// </summary>
-		public override bool IsFormed => Buffer.Count > Shift;
-
-		/// <summary>
-		/// To handle the input value.
-		/// </summary>
-		/// <param name="input">The input value.</param>
-		/// <returns>The resulting value.</returns>
-		protected override IIndicatorValue OnProcess(IIndicatorValue input)
+	/// <inheritdoc />
+	protected override IIndicatorValue OnProcess(IIndicatorValue input)
+	{
+		var smaResult = _sma.Process(_medianPrice.Process(input));
+		if (_sma.IsFormed & input.IsFinal)
 		{
 			//если кол-во в буфере больше Shift, то первое значение отдали в прошлый раз, удалим его.
 			if (Buffer.Count > Shift)
-				Buffer.RemoveAt(0);
+				Buffer.PopFront();
 
-			var smaResult = _sma.Process(_medianPrice.Process(input));
-			if (_sma.IsFormed & input.IsFinal)
-				Buffer.Add(smaResult.GetValue<decimal>());
-
-			return Buffer.Count > Shift
-				? new DecimalIndicatorValue(this, Buffer[0])
-				: new DecimalIndicatorValue(this);
+			Buffer.PushBack(smaResult.ToDecimal());
 		}
 
-		/// <summary>
-		/// Load settings.
-		/// </summary>
-		/// <param name="settings">Settings storage.</param>
-		public override void Load(SettingsStorage settings)
-		{
-			base.Load(settings);
-			Shift = settings.GetValue<int>(nameof(Shift));
-		}
+		return Buffer.Count > Shift
+			? new DecimalIndicatorValue(this, Buffer[input.IsFinal ? 0 : Math.Min(1, Buffer.Count - 1)], input.Time)
+			: new DecimalIndicatorValue(this, input.Time);
+	}
 
-		/// <summary>
-		/// Save settings.
-		/// </summary>
-		/// <param name="settings">Settings storage.</param>
-		public override void Save(SettingsStorage settings)
-		{
-			base.Save(settings);
-			settings.SetValue(nameof(Shift), Shift);
-		}
+	/// <inheritdoc />
+	public override void Load(SettingsStorage storage)
+	{
+		base.Load(storage);
+		Shift = storage.GetValue<int>(nameof(Shift));
+	}
+
+	/// <inheritdoc />
+	public override void Save(SettingsStorage storage)
+	{
+		base.Save(storage);
+		storage.SetValue(nameof(Shift), Shift);
 	}
 }

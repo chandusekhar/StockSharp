@@ -1,163 +1,126 @@
-﻿#region S# License
-/******************************************************************************************
-NOTICE!!!  This program and source code is owned and licensed by
-StockSharp, LLC, www.stocksharp.com
-Viewing or use of this code requires your acceptance of the license
-agreement found at https://github.com/StockSharp/StockSharp/blob/master/LICENSE
-Removal of this comment is a violation of the license agreement.
+﻿namespace StockSharp.Algo.Indicators;
 
-Project: StockSharp.Algo.Indicators.Algo
-File: KaufmannAdaptiveMovingAverage.cs
-Created: 2015, 11, 11, 2:32 PM
-
-Copyright 2010 by StockSharp, LLC
-*******************************************************************************************/
-#endregion S# License
-namespace StockSharp.Algo.Indicators
+/// <summary>
+/// Kaufman adaptive moving average.
+/// </summary>
+/// <remarks>
+/// https://doc.stocksharp.com/topics/api/indicators/list_of_indicators/kama.html
+/// </remarks>
+[Display(
+	ResourceType = typeof(LocalizedStrings),
+	Name = LocalizedStrings.KAMAKey,
+	Description = LocalizedStrings.KaufmannAdaptiveMovingAverageKey)]
+[Doc("topics/api/indicators/list_of_indicators/kama.html")]
+public class KaufmannAdaptiveMovingAverage : LengthIndicator<decimal>
 {
-	using System.Collections.Generic;
-	using System.ComponentModel;
-	using System.Linq;
-	using System;
-
-	using Ecng.Collections;
-	using Ecng.Serialization;
-
-	using StockSharp.Localization;
+	private decimal _prevFinalValue;
+	private bool _isInitialized;
 
 	/// <summary>
-	/// Kaufman adaptive moving average.
+	/// Initializes a new instance of the <see cref="KaufmannAdaptiveMovingAverage"/>.
 	/// </summary>
-	[DisplayName("KAMA")]
-	[DescriptionLoc(LocalizedStrings.Str792Key)]
-	public class KaufmannAdaptiveMovingAverage : LengthIndicator<decimal>
+	public KaufmannAdaptiveMovingAverage()
 	{
-		private decimal _prevFinalValue;
-		private bool _isInitialized;
+		FastSCPeriod = 2;
+		SlowSCPeriod = 30;
+	}
 
-		/// <summary>
-		/// Initializes a new instance of the <see cref="KaufmannAdaptiveMovingAverage"/>.
-		/// </summary>
-		public KaufmannAdaptiveMovingAverage()
+	/// <summary>
+	/// 'Rapid' EMA period. The default value is 2.
+	/// </summary>
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.FastMaKey,
+		Description = LocalizedStrings.FastMaDescKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public int FastSCPeriod { get; set; }
+
+	/// <summary>
+	/// 'Slow' EMA period. The default value is 30.
+	/// </summary>
+	[Display(
+		ResourceType = typeof(LocalizedStrings),
+		Name = LocalizedStrings.SlowMaKey,
+		Description = LocalizedStrings.SlowMaDescKey,
+		GroupName = LocalizedStrings.GeneralKey)]
+	public int SlowSCPeriod { get; set; }
+
+	/// <inheritdoc />
+	protected override bool CalcIsFormed() => Buffer.Count > Length;
+
+	/// <inheritdoc />
+	public override void Reset()
+	{
+		_prevFinalValue = 0;
+		_isInitialized = false;
+
+		base.Reset();
+
+		Buffer.Capacity = Length + 1;
+	}
+
+	/// <inheritdoc />
+	protected override IIndicatorValue OnProcess(IIndicatorValue input)
+	{
+		var newValue = input.ToDecimal();
+		var lastValue = this.GetCurrentValue();
+
+		if (input.IsFinal)
+			Buffer.PushBack(newValue);
+
+		if (!IsFormed)
+			return new DecimalIndicatorValue(this, lastValue, input.Time);
+
+		if (!_isInitialized && Buffer.Count == Length + 1)
 		{
-			FastSCPeriod = 2;
-			SlowSCPeriod = 30;
+			_isInitialized = true;
+			// Начальное значение - последнее входное значение.
+			return new DecimalIndicatorValue(this, _prevFinalValue = newValue, input.Time);
 		}
 
-		/// <summary>
-		/// �Rapid� EMA period. The default value is 2.
-		/// </summary>
-		[DisplayNameLoc(LocalizedStrings.Str793Key)]
-		[DescriptionLoc(LocalizedStrings.Str794Key)]
-		[CategoryLoc(LocalizedStrings.GeneralKey)]
-		public int FastSCPeriod { get; set; }
+		var buff = input.IsFinal ? Buffer : (IList<decimal>)Buffer.Skip(1).Append(newValue).ToArray();
 
-		/// <summary>
-		/// �Slow� EMA period. The default value is 30.
-		/// </summary>
-		[DisplayNameLoc(LocalizedStrings.Str795Key)]
-		[DescriptionLoc(LocalizedStrings.Str796Key)]
-		[CategoryLoc(LocalizedStrings.GeneralKey)]
-		public int SlowSCPeriod { get; set; }
+		var direction = newValue - buff[0];
 
-		/// <summary>
-		/// Whether the indicator is set.
-		/// </summary>
-		public override bool IsFormed => Buffer.Count > Length;
+		decimal volatility = 0;
 
-		/// <summary>
-		/// To reset the indicator status to initial. The method is called each time when initial settings are changed (for example, the length of period).
-		/// </summary>
-		public override void Reset()
+		for (var i = 1; i < buff.Count; i++)
 		{
-			_prevFinalValue = 0;
-			_isInitialized = false;
-
-			base.Reset();
+			volatility += Math.Abs(buff[i] - buff[i - 1]);
 		}
 
-		/// <summary>
-		/// To handle the input value.
-		/// </summary>
-		/// <param name="input">The input value.</param>
-		/// <returns>The resulting value.</returns>
-		protected override IIndicatorValue OnProcess(IIndicatorValue input)
-		{
-			var newValue = input.GetValue<decimal>();
-			var lastValue = this.GetCurrentValue();
+		volatility = volatility > 0 ? volatility : 0.00001m;
 
-			if (input.IsFinal)
-				Buffer.Add(newValue);
+		var er = Math.Abs(direction / volatility);
 
-			if (!IsFormed)
-				return new DecimalIndicatorValue(this, lastValue);
+		var fastSC = 2m / (FastSCPeriod + 1m);
+		var slowSC = 2m / (SlowSCPeriod + 1m);
 
-			if (!_isInitialized && Buffer.Count == Length + 1)
-			{
-				_isInitialized = true;
-				// Начальное значение - последнее входное значение.
-				return new DecimalIndicatorValue(this, _prevFinalValue = newValue);
-			}
+		var ssc = er * (fastSC - slowSC) + slowSC;
+		var smooth = (ssc * ssc);
 
-			var buff = Buffer;
+		var curValue = (newValue - _prevFinalValue) * smooth + _prevFinalValue;
+		if (input.IsFinal)
+			_prevFinalValue = curValue;
 
-			if (input.IsFinal)
-			{
-				buff.RemoveAt(0);
-			}
-			else
-			{
-				buff = new List<decimal>();
-				buff.AddRange(Buffer.Skip(1));
-				buff.Add(newValue);
-			}
+		return new DecimalIndicatorValue(this, curValue, input.Time);
+	}
 
-			var direction = newValue - buff[0];
+	/// <inheritdoc />
+	public override void Load(SettingsStorage storage)
+	{
+		base.Load(storage);
 
-			decimal volatility = 0;
+		FastSCPeriod = storage.GetValue(nameof(FastSCPeriod), FastSCPeriod);
+		FastSCPeriod = storage.GetValue(nameof(FastSCPeriod), FastSCPeriod);
+	}
 
-			for (int i = 1; i < buff.Count; i++)
-			{
-				volatility += Math.Abs(buff[i] - buff[i - 1]);
-			}
+	/// <inheritdoc />
+	public override void Save(SettingsStorage storage)
+	{
+		base.Save(storage);
 
-			volatility = volatility > 0 ? volatility : 0.00001m;
-
-			var er = Math.Abs(direction / volatility);
-
-			var fastSC = 2m / (FastSCPeriod + 1m);
-			var slowSC = 2m / (SlowSCPeriod + 1m);
-
-			var ssc = er * (fastSC - slowSC) + slowSC;
-			var smooth = (ssc * ssc);
-
-			var curValue = (newValue - _prevFinalValue) * smooth + _prevFinalValue;
-			if (input.IsFinal)
-				_prevFinalValue = curValue;
-
-			return new DecimalIndicatorValue(this, curValue);
-		}
-
-		/// <summary>
-		/// Load settings.
-		/// </summary>
-		/// <param name="settings">Settings storage.</param>
-		public override void Load(SettingsStorage settings)
-		{
-			base.Load(settings);
-			FastSCPeriod = settings.GetValue<int>(nameof(FastSCPeriod));
-			FastSCPeriod = settings.GetValue<int>(nameof(FastSCPeriod));
-		}
-
-		/// <summary>
-		/// Save settings.
-		/// </summary>
-		/// <param name="settings">Settings storage.</param>
-		public override void Save(SettingsStorage settings)
-		{
-			base.Save(settings);
-			settings.SetValue(nameof(FastSCPeriod), FastSCPeriod);
-			settings.SetValue(nameof(SlowSCPeriod), SlowSCPeriod);
-		}
+		storage.SetValue(nameof(FastSCPeriod), FastSCPeriod);
+		storage.SetValue(nameof(SlowSCPeriod), SlowSCPeriod);
 	}
 }

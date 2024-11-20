@@ -1,87 +1,154 @@
-#region S# License
-/******************************************************************************************
-NOTICE!!!  This program and source code is owned and licensed by
-StockSharp, LLC, www.stocksharp.com
-Viewing or use of this code requires your acceptance of the license
-agreement found at https://github.com/StockSharp/StockSharp/blob/master/LICENSE
-Removal of this comment is a violation of the license agreement.
+namespace StockSharp.Algo.Positions;
 
-Project: StockSharp.Algo.Positions.Algo
-File: PositionMessageAdapter.cs
-Created: 2015, 11, 11, 2:32 PM
-
-Copyright 2010 by StockSharp, LLC
-*******************************************************************************************/
-#endregion S# License
-namespace StockSharp.Algo.Positions
+/// <summary>
+/// The message adapter, automatically calculating position.
+/// </summary>
+public class PositionMessageAdapter : MessageAdapterWrapper
 {
-	using System;
+	private readonly SyncObject _sync = new();
+	private readonly IPositionManager _positionManager;
 
-	using StockSharp.Messages;
+	private readonly CachedSynchronizedSet<long> _subscriptions = [];
+	private readonly SynchronizedDictionary<string, CachedSynchronizedSet<long>> _strategySubscriptions = new(StringComparer.InvariantCultureIgnoreCase);
+	private readonly SynchronizedDictionary<long, string> _strategyIdMap = [];
 
 	/// <summary>
-	/// The message adapter, automatically calculating position.
+	/// Initializes a new instance of the <see cref="PositionMessageAdapter"/>.
 	/// </summary>
-	public class PositionMessageAdapter : MessageAdapterWrapper
+	/// <param name="innerAdapter">The adapter, to which messages will be directed.</param>
+	/// <param name="positionManager">The position calculation manager..</param>
+	public PositionMessageAdapter(IMessageAdapter innerAdapter, IPositionManager positionManager)
+		: base(innerAdapter)
 	{
-		/// <summary>
-		/// Initializes a new instance of the <see cref="PositionMessageAdapter"/>.
-		/// </summary>
-		/// <param name="innerAdapter">The adapter, to which messages will be directed.</param>
-		public PositionMessageAdapter(IMessageAdapter innerAdapter)
-			: base(innerAdapter)
-		{
-		}
+		_positionManager = positionManager ?? throw new ArgumentNullException(nameof(positionManager));
 
-		private IPositionManager _positionManager = new PositionManager(true);
+		if (_positionManager is ILogSource source && source.Parent == null)
+			source.Parent = this;
+	}
 
-		/// <summary>
-		/// The position manager.
-		/// </summary>
-		public IPositionManager PositionManager
+	private bool IsEmulate => InnerAdapter.IsPositionsEmulationRequired != null;
+
+	/// <inheritdoc />
+	public override IEnumerable<MessageTypeInfo> PossibleSupportedMessages
+		=> InnerAdapter.PossibleSupportedMessages.Concat(IsEmulate ? [MessageTypes.PortfolioLookup.ToInfo()] : []).Distinct();
+
+	/// <inheritdoc />
+	public override IEnumerable<MessageTypes> SupportedResultMessages
+		=> InnerAdapter.SupportedResultMessages.Concat(IsEmulate ? [MessageTypes.PortfolioLookup] : []).Distinct();
+
+	/// <inheritdoc />
+	protected override bool OnSendInMessage(Message message)
+	{
+		switch (message.Type)
 		{
-			get { return _positionManager; }
-			set
+			case MessageTypes.Reset:
 			{
-				if (value == null)
-					throw new ArgumentNullException(nameof(value));
+				_subscriptions.Clear();
+				_strategyIdMap.Clear();
+				_strategySubscriptions.Clear();
 
-				_positionManager = value;
+				lock (_sync)
+					_positionManager.ProcessMessage(message);
+
+				break;
+			}
+			case MessageTypes.PortfolioLookup:
+			{
+				var lookupMsg = (PortfolioLookupMessage)message;
+
+				if (lookupMsg.IsSubscribe)
+				{
+					if (!lookupMsg.StrategyId.IsEmpty())
+					{
+						this.AddDebugLog("Subscription (strategy='{1}') {0} added.", lookupMsg.TransactionId, lookupMsg.StrategyId);
+						_strategyIdMap.Add(lookupMsg.TransactionId, lookupMsg.StrategyId);
+						_strategySubscriptions.SafeAdd(lookupMsg.StrategyId).Add(lookupMsg.TransactionId);
+						RaiseNewOutMessage(lookupMsg.CreateResult());
+						return true;
+					}
+
+					if (lookupMsg.To == null)
+					{
+						this.AddDebugLog("Subscription {0} added.", lookupMsg.TransactionId);
+						_subscriptions.Add(lookupMsg.TransactionId);
+
+						lock (_sync)
+							_positionManager.ProcessMessage(message);
+					}
+
+					if (IsEmulate)
+					{
+						RaiseNewOutMessage(lookupMsg.CreateResult());
+						return true;
+					}
+				}
+				else
+				{
+					if (_subscriptions.Remove(lookupMsg.OriginalTransactionId))
+					{
+						this.AddDebugLog("Subscription {0} removed.", lookupMsg.OriginalTransactionId);
+
+						lock (_sync)
+							_positionManager.ProcessMessage(message);
+					}
+					else if (_strategyIdMap.TryGetAndRemove(lookupMsg.OriginalTransactionId, out var strategyId))
+					{
+						_strategySubscriptions.TryGetValue(strategyId)?.Remove(lookupMsg.OriginalTransactionId);
+						this.AddDebugLog("Subscription (strategy='{1}') {0} removed.", lookupMsg.OriginalTransactionId, strategyId);
+						return true;
+					}
+
+					if (IsEmulate)
+					{
+						RaiseNewOutMessage(lookupMsg.CreateResponse());
+						return true;
+					}
+				}
+
+				break;
+			}
+
+			default:
+			{
+				lock (_sync)
+					_positionManager.ProcessMessage(message);
+
+				break;
 			}
 		}
-
-		/// <summary>
-		/// Send message.
-		/// </summary>
-		/// <param name="message">Message.</param>
-		public override void SendInMessage(Message message)
-		{
-			PositionManager.ProcessMessage(message);
-
-			base.SendInMessage(message);
-		}
-
-		/// <summary>
-		/// Process <see cref="MessageAdapterWrapper.InnerAdapter"/> output message.
-		/// </summary>
-		/// <param name="message">The message.</param>
-		protected override void OnInnerAdapterNewOutMessage(Message message)
-		{
-			var position = PositionManager.ProcessMessage(message);
-
-			if (position != null)
-				((ExecutionMessage)message).Position = position;
-
-			base.OnInnerAdapterNewOutMessage(message);
-		}
-
-		/// <summary>
-		/// Create a copy of <see cref="PositionMessageAdapter"/>.
-		/// </summary>
-		/// <returns>Copy.</returns>
-		public override IMessageChannel Clone()
-		{
-			return new PositionMessageAdapter((IMessageAdapter)InnerAdapter.Clone());
-		}
+		
+		return base.OnSendInMessage(message);
 	}
+
+	/// <inheritdoc />
+	protected override void OnInnerAdapterNewOutMessage(Message message)
+	{
+		PositionChangeMessage change = null;
+
+		if (message.Type is not MessageTypes.Reset and
+			not MessageTypes.Connect and
+			not MessageTypes.Disconnect)
+		{
+			lock (_sync)
+				change = _positionManager.ProcessMessage(message);
+		}
+
+		if (change != null)
+		{
+			var subscriptions = change.StrategyId.IsEmpty() ? _subscriptions.Cache : _strategySubscriptions.TryGetValue(change.StrategyId)?.Cache;
+
+			if (subscriptions?.Length > 0)
+				change.SetSubscriptionIds(subscriptions);
+
+			base.OnInnerAdapterNewOutMessage(change);
+		}
+
+		base.OnInnerAdapterNewOutMessage(message);
+	}
+
+	/// <summary>
+	/// Create a copy of <see cref="PositionMessageAdapter"/>.
+	/// </summary>
+	/// <returns>Copy.</returns>
+	public override IMessageChannel Clone() => new PositionMessageAdapter(InnerAdapter.TypedClone(), _positionManager);
 }
